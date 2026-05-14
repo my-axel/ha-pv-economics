@@ -81,7 +81,7 @@ def compute_hourly_savings(
     fixed_price_ct: float | None = None,
     hourly_prices: list[tuple[datetime, float]] | None = None,
 ) -> list[tuple[datetime, float]]:
-    """Return per-hour electricity savings in EUR.
+    """Return per-hour electricity savings (currency unit matches ct/kWh input).
 
     Prices must be in ct/kWh. Provide exactly one of fixed_price_ct or
     hourly_prices. With hourly_prices, only hours present in both series
@@ -106,7 +106,7 @@ def compute_hourly_feed_in(
     fixed_tariff_ct: float | None = None,
     hourly_tariffs: list[tuple[datetime, float]] | None = None,
 ) -> list[tuple[datetime, float]]:
-    """Return per-hour feed-in revenue in EUR.
+    """Return per-hour feed-in revenue (currency unit matches ct/kWh input).
 
     Tariffs must be in ct/kWh. Provide exactly one of fixed_tariff_ct or
     hourly_tariffs. With hourly_tariffs, only hours present in both series
@@ -126,25 +126,25 @@ def compute_hourly_feed_in(
 
 
 def calculate_savings(hourly_savings: list[tuple[datetime, float]]) -> float:
-    """Sum hourly savings to total EUR."""
-    return sum(eur for _, eur in hourly_savings)
+    """Sum hourly savings to total monetary value."""
+    return sum(v for _, v in hourly_savings)
 
 
 def calculate_feed_in_revenue(hourly_feed_in: list[tuple[datetime, float]]) -> float:
-    """Sum hourly feed-in revenue to total EUR."""
-    return sum(eur for _, eur in hourly_feed_in)
+    """Sum hourly feed-in revenue to total monetary value."""
+    return sum(v for _, v in hourly_feed_in)
 
 
 def aggregate_daily_yields(
     hourly_savings: list[tuple[datetime, float]],
     hourly_feed_in: list[tuple[datetime, float]],
 ) -> list[tuple[date, float]]:
-    """Return (date, eur_yield) per UTC calendar day, sorted chronologically."""
+    """Return (date, yield) per UTC calendar day, sorted chronologically."""
     daily: dict[date, float] = defaultdict(float)
-    for ts, eur in hourly_savings:
-        daily[ts.date()] += eur
-    for ts, eur in hourly_feed_in:
-        daily[ts.date()] += eur
+    for ts, v in hourly_savings:
+        daily[ts.date()] += v
+    for ts, v in hourly_feed_in:
+        daily[ts.date()] += v
     return sorted(daily.items())
 
 
@@ -161,7 +161,7 @@ def calculate_average_daily_yield(
     daily_yields: list[tuple[date, float]],
     rolling_window_days: int,
 ) -> float | None:
-    """Return avg EUR/day over the rolling window. None when no data."""
+    """Return average daily yield over the rolling window. None when no data."""
     if not daily_yields:
         return None
     window = daily_yields[-rolling_window_days:]

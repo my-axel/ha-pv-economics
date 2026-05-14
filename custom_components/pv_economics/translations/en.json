@@ -19,12 +19,12 @@
         "title": "Pre-tracking totals",
         "description": "Enter your cumulative financial totals as of the tracking start date. The integration will add any new earnings on top of these values. Leave at 0 if you have no prior data.",
         "data": {
-          "historical_savings_eur": "Electricity savings up to tracking start",
-          "historical_feed_in_eur": "Feed-in revenue up to tracking start"
+          "historical_savings": "Electricity savings up to tracking start",
+          "historical_feed_in": "Feed-in revenue up to tracking start"
         },
         "data_description": {
-          "historical_savings_eur": "Total money saved through self-consumption up to your tracking start date (in EUR). Check your own records or electricity bills.",
-          "historical_feed_in_eur": "Total feed-in revenue received up to your tracking start date (in EUR). Check your utility statements or inverter portal."
+          "historical_savings": "Total money saved through self-consumption up to your tracking start date. Check your own records or electricity bills.",
+          "historical_feed_in": "Total feed-in revenue received up to your tracking start date. Check your utility statements or inverter portal."
         }
       },
       "entities": {
@@ -101,12 +101,12 @@
         "title": "Pre-tracking totals",
         "description": "Edit your cumulative financial totals as of the tracking start date.",
         "data": {
-          "historical_savings_eur": "Electricity savings up to tracking start",
-          "historical_feed_in_eur": "Feed-in revenue up to tracking start"
+          "historical_savings": "Electricity savings up to tracking start",
+          "historical_feed_in": "Feed-in revenue up to tracking start"
         },
         "data_description": {
-          "historical_savings_eur": "Total money saved through self-consumption up to your tracking start date (in EUR).",
-          "historical_feed_in_eur": "Total feed-in revenue received up to your tracking start date (in EUR)."
+          "historical_savings": "Total money saved through self-consumption up to your tracking start date.",
+          "historical_feed_in": "Total feed-in revenue received up to your tracking start date."
         }
       },
       "entities": {

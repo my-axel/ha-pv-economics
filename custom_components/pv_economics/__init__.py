@@ -9,8 +9,8 @@ from homeassistant.core import HomeAssistant
 
 from .const import (
     CONF_COMMISSIONING_DATE,
-    CONF_HISTORICAL_FEED_IN_EUR,
-    CONF_HISTORICAL_SAVINGS_EUR,
+    CONF_HISTORICAL_FEED_IN,
+    CONF_HISTORICAL_SAVINGS,
     CONF_STATISTICS_START_DATE,
     PLATFORMS,
 )
@@ -64,13 +64,26 @@ async def async_migrate_entry(
         # commissioning date so HA-tracked totals remain unchanged.
         new_data = {**entry.data}
         old_offset = float(new_data.pop("historical_offset", 0.0) or 0.0)
-        new_data.setdefault(CONF_HISTORICAL_SAVINGS_EUR, old_offset)
-        new_data.setdefault(CONF_HISTORICAL_FEED_IN_EUR, 0.0)
+        new_data.setdefault("historical_savings_eur", old_offset)
+        new_data.setdefault("historical_feed_in_eur", 0.0)
         new_data.setdefault(
             CONF_STATISTICS_START_DATE, new_data[CONF_COMMISSIONING_DATE]
         )
         hass.config_entries.async_update_entry(entry, data=new_data, version=2)
         _LOGGER.info(
             "Migrated PV Economics entry %s from version 1 to 2", entry.entry_id
+        )
+    if entry.version == 2:
+        # v2 used currency-specific key names. Rename to neutral names.
+        new_data = {**entry.data}
+        new_data[CONF_HISTORICAL_SAVINGS] = new_data.pop(
+            "historical_savings_eur", 0.0
+        )
+        new_data[CONF_HISTORICAL_FEED_IN] = new_data.pop(
+            "historical_feed_in_eur", 0.0
+        )
+        hass.config_entries.async_update_entry(entry, data=new_data, version=3)
+        _LOGGER.info(
+            "Migrated PV Economics entry %s from version 2 to 3", entry.entry_id
         )
     return True

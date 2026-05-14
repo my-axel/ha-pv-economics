@@ -19,12 +19,12 @@
         "title": "Bisherige Gesamtwerte",
         "description": "Gib deine kumulierten Gesamtwerte bis zum Tracking-Startdatum ein. Die Integration addiert alle zukünftigen Erträge auf diese Werte. Lasse die Felder auf 0, wenn du keine Vorwerte hast.",
         "data": {
-          "historical_savings_eur": "Stromersparnis bis Tracking-Start",
-          "historical_feed_in_eur": "Einspeiseerlös bis Tracking-Start"
+          "historical_savings": "Stromersparnis bis Tracking-Start",
+          "historical_feed_in": "Einspeiseerlös bis Tracking-Start"
         },
         "data_description": {
-          "historical_savings_eur": "Gesamte bisher durch Eigenverbrauch erzielte Ersparnis bis zum Tracking-Startdatum (in EUR). Prüfe deine eigenen Aufzeichnungen oder Stromrechnungen.",
-          "historical_feed_in_eur": "Gesamter bisher erhaltener Einspeiseerlös bis zum Tracking-Startdatum (in EUR). Prüfe deine Abrechnungen des Netzbetreibers oder das Wechselrichter-Portal."
+          "historical_savings": "Gesamte bisher durch Eigenverbrauch erzielte Ersparnis bis zum Tracking-Startdatum. Prüfe deine eigenen Aufzeichnungen oder Stromrechnungen.",
+          "historical_feed_in": "Gesamter bisher erhaltener Einspeiseerlös bis zum Tracking-Startdatum. Prüfe deine Abrechnungen des Netzbetreibers oder das Wechselrichter-Portal."
         }
       },
       "entities": {
@@ -101,12 +101,12 @@
         "title": "Bisherige Gesamtwerte",
         "description": "Bearbeite deine kumulierten Gesamtwerte bis zum Tracking-Startdatum.",
         "data": {
-          "historical_savings_eur": "Stromersparnis bis Tracking-Start",
-          "historical_feed_in_eur": "Einspeiseerlös bis Tracking-Start"
+          "historical_savings": "Stromersparnis bis Tracking-Start",
+          "historical_feed_in": "Einspeiseerlös bis Tracking-Start"
         },
         "data_description": {
-          "historical_savings_eur": "Gesamte bisher durch Eigenverbrauch erzielte Ersparnis bis zum Tracking-Startdatum (in EUR).",
-          "historical_feed_in_eur": "Gesamter bisher erhaltener Einspeiseerlös bis zum Tracking-Startdatum (in EUR)."
+          "historical_savings": "Gesamte bisher durch Eigenverbrauch erzielte Ersparnis bis zum Tracking-Startdatum.",
+          "historical_feed_in": "Gesamter bisher erhaltener Einspeiseerlös bis zum Tracking-Startdatum."
         }
       },
       "entities": {

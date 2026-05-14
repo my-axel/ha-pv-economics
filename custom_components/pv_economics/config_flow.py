@@ -36,16 +36,16 @@ from .const import (
     CONF_FEED_IN_TARIFF_VALUE,
     CONF_GRID_EXPORT_ENTITY,
     CONF_GRID_IMPORT_ENTITY,
-    CONF_HISTORICAL_FEED_IN_EUR,
-    CONF_HISTORICAL_SAVINGS_EUR,
+    CONF_HISTORICAL_FEED_IN,
+    CONF_HISTORICAL_SAVINGS,
     CONF_INSTALLATION_COST,
     CONF_MIN_HISTORY_DAYS,
     CONF_PV_PRODUCTION_ENTITY,
     CONF_ROLLING_WINDOW_DAYS,
     CONF_STATISTICS_START_DATE,
     CONF_UPDATE_INTERVAL_MINUTES,
-    DEFAULT_HISTORICAL_FEED_IN_EUR,
-    DEFAULT_HISTORICAL_SAVINGS_EUR,
+    DEFAULT_HISTORICAL_FEED_IN,
+    DEFAULT_HISTORICAL_SAVINGS,
     DEFAULT_MIN_HISTORY_DAYS,
     DEFAULT_ROLLING_WINDOW_DAYS,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
@@ -137,14 +137,14 @@ def _history_schema(defaults: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
             _optional_key(
-                CONF_HISTORICAL_SAVINGS_EUR,
+                CONF_HISTORICAL_SAVINGS,
                 defaults,
-                DEFAULT_HISTORICAL_SAVINGS_EUR,
+                DEFAULT_HISTORICAL_SAVINGS,
             ): _number_selector(min_value=0),
             _optional_key(
-                CONF_HISTORICAL_FEED_IN_EUR,
+                CONF_HISTORICAL_FEED_IN,
                 defaults,
-                DEFAULT_HISTORICAL_FEED_IN_EUR,
+                DEFAULT_HISTORICAL_FEED_IN,
             ): _number_selector(min_value=0),
         }
     )
@@ -235,7 +235,7 @@ _STATISTICS_NOTE = (
 class PVEconomicsConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for PV Economics."""
 
-    VERSION = 2
+    VERSION = 3
 
     def __init__(self) -> None:
         self._data: dict[str, Any] = {}
