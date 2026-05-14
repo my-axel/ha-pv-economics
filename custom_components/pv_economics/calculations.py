@@ -206,6 +206,9 @@ def calculate_amortization_date(
         return None
 
     if total_yield >= installation_cost:
+        if historical_offset >= installation_cost:
+            # Already amortised before tracking started; exact date unknown.
+            return None
         cumulative = historical_offset
         for day, yield_eur in daily_yields:
             cumulative += yield_eur

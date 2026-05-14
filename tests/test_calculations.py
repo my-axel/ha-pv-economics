@@ -352,6 +352,16 @@ def test_amortization_date_already_amortized_by_offset() -> None:
     assert result is None
 
 
+def test_amortization_date_offset_alone_covers_cost_with_ha_data() -> None:
+    # Offset alone >= installation_cost; HA has data but break-even predates tracking
+    daily = [_daily(i, 2.0) for i in range(100, 110)]
+    result = calculate_amortization_date(
+        daily, 5000.0, 5200.0, 5100.0, _COMMISSIONING, 60, 365, _TODAY
+    )
+    # 5100 >= 5000 → amortised before tracking started, exact date unknown
+    assert result is None
+
+
 def test_amortization_date_rolling_window_capped() -> None:
     # Only 100 days of data, avg = 2.0 EUR/day, need 1000 more EUR
     daily = [_daily(i, 2.0) for i in range(100, 200)]  # 100 days
