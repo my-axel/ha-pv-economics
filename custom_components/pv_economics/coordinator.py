@@ -22,7 +22,6 @@ from .calculations import (
     calculate_self_consumption,
     calculate_self_consumption_rate,
     calculate_self_sufficiency,
-    calculate_total_yield,
     compute_hourly_deltas,
     compute_hourly_feed_in,
     compute_hourly_savings,
@@ -37,13 +36,16 @@ from .const import (
     CONF_FEED_IN_TARIFF_VALUE,
     CONF_GRID_EXPORT_ENTITY,
     CONF_GRID_IMPORT_ENTITY,
-    CONF_HISTORICAL_OFFSET,
+    CONF_HISTORICAL_FEED_IN_EUR,
+    CONF_HISTORICAL_SAVINGS_EUR,
     CONF_INSTALLATION_COST,
     CONF_MIN_HISTORY_DAYS,
     CONF_PV_PRODUCTION_ENTITY,
     CONF_ROLLING_WINDOW_DAYS,
+    CONF_STATISTICS_START_DATE,
     CONF_UPDATE_INTERVAL_MINUTES,
-    DEFAULT_HISTORICAL_OFFSET,
+    DEFAULT_HISTORICAL_FEED_IN_EUR,
+    DEFAULT_HISTORICAL_SAVINGS_EUR,
     DEFAULT_MIN_HISTORY_DAYS,
     DEFAULT_ROLLING_WINDOW_DAYS,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
@@ -59,6 +61,7 @@ from .const import (
     VALUE_SELF_CONSUMPTION,
     VALUE_SELF_CONSUMPTION_RATE,
     VALUE_SELF_SUFFICIENCY,
+    VALUE_SYSTEM_AGE_DAYS,
     VALUE_TOTAL_SAVINGS,
     VALUE_TOTAL_YIELD,
 )
@@ -95,9 +98,13 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         cfg = {**self.config_entry.data, **self.config_entry.options}
 
         commissioning_date = date.fromisoformat(cfg[CONF_COMMISSIONING_DATE])
+        statistics_start = date.fromisoformat(cfg[CONF_STATISTICS_START_DATE])
         installation_cost = float(cfg[CONF_INSTALLATION_COST])
-        historical_offset = float(
-            cfg.get(CONF_HISTORICAL_OFFSET, DEFAULT_HISTORICAL_OFFSET)
+        historical_savings_eur = float(
+            cfg.get(CONF_HISTORICAL_SAVINGS_EUR, DEFAULT_HISTORICAL_SAVINGS_EUR)
+        )
+        historical_feed_in_eur = float(
+            cfg.get(CONF_HISTORICAL_FEED_IN_EUR, DEFAULT_HISTORICAL_FEED_IN_EUR)
         )
         min_history_days = int(
             cfg.get(CONF_MIN_HISTORY_DAYS, DEFAULT_MIN_HISTORY_DAYS)
@@ -106,7 +113,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             cfg.get(CONF_ROLLING_WINDOW_DAYS, DEFAULT_ROLLING_WINDOW_DAYS)
         )
 
-        start = datetime.combine(commissioning_date, time.min).replace(
+        start = datetime.combine(statistics_start, time.min).replace(
             tzinfo=dt_util.UTC
         )
         end = dt_util.utcnow()
@@ -156,15 +163,20 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         exp_deltas = compute_hourly_deltas(stats.get(exp_id, []))
 
         sc_hourly = calculate_hourly_self_consumption(prod_deltas, exp_deltas)
+        sc_timestamps = {ts for ts, _ in sc_hourly}
+
         sc_total = calculate_self_consumption(sc_hourly)
-        prod_total = sum(kwh for _, kwh in prod_deltas)
-        sc_rate = calculate_self_consumption_rate(sc_total, prod_total)
+        # Use only production hours that fall within the SC period so that
+        # the denominator covers the same timespan as the numerator.
+        prod_in_sc_period = sum(kwh for ts, kwh in prod_deltas if ts in sc_timestamps)
+        sc_rate = calculate_self_consumption_rate(sc_total, prod_in_sc_period)
 
         sc_sufficiency: float | None = None
         if imp_id:
             imp_deltas = compute_hourly_deltas(stats.get(imp_id, []))
-            imp_total = sum(kwh for _, kwh in imp_deltas)
-            sc_sufficiency = calculate_self_sufficiency(sc_total, imp_total)
+            # Same period constraint: only count import during SC hours.
+            imp_in_sc_period = sum(kwh for ts, kwh in imp_deltas if ts in sc_timestamps)
+            sc_sufficiency = calculate_self_sufficiency(sc_total, imp_in_sc_period)
 
         # Savings
         hourly_savings = self._compute_savings(
@@ -190,10 +202,16 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         savings_eur = calculate_savings(hourly_savings)
         feed_in_eur = calculate_feed_in_revenue(hourly_feed_in)
-        total_yield = calculate_total_yield(savings_eur, feed_in_eur, historical_offset)
+
+        savings_all = savings_eur + historical_savings_eur
+        feed_in_all = feed_in_eur + historical_feed_in_eur
+        total_yield = savings_all + feed_in_all
+        historical_offset_combined = historical_savings_eur + historical_feed_in_eur
+
         progress_pct = calculate_amortization_progress_pct(
             total_yield, installation_cost
         )
+        system_age_days = (today - commissioning_date).days
 
         daily_yields = aggregate_daily_yields(hourly_savings, hourly_feed_in)
         today = date.today()
@@ -202,7 +220,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             daily_yields,
             installation_cost,
             total_yield,
-            historical_offset,
+            historical_offset_combined,
             commissioning_date,
             min_history_days,
             rolling_window_days,
@@ -223,10 +241,11 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             VALUE_SELF_SUFFICIENCY: (
                 round(sc_sufficiency * 100.0, 1) if sc_sufficiency is not None else None
             ),
-            VALUE_TOTAL_SAVINGS: round(savings_eur, 2),
-            VALUE_FEED_IN_REVENUE: round(feed_in_eur, 2),
+            VALUE_TOTAL_SAVINGS: round(savings_all, 2),
+            VALUE_FEED_IN_REVENUE: round(feed_in_all, 2),
             VALUE_TOTAL_YIELD: round(total_yield, 2),
             VALUE_NET_YIELD: round(total_yield - installation_cost, 2),
+            VALUE_SYSTEM_AGE_DAYS: system_age_days,
             VALUE_AMORTIZATION_PROGRESS_PCT: (
                 round(progress_pct * 100.0, 1) if progress_pct is not None else None
             ),

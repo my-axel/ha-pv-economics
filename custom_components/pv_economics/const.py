@@ -10,7 +10,9 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 CONF_INSTALLATION_COST = "installation_cost"
 CONF_COMMISSIONING_DATE = "commissioning_date"
-CONF_HISTORICAL_OFFSET = "historical_offset"
+CONF_STATISTICS_START_DATE = "statistics_start_date"
+CONF_HISTORICAL_SAVINGS_EUR = "historical_savings_eur"
+CONF_HISTORICAL_FEED_IN_EUR = "historical_feed_in_eur"
 CONF_FEED_IN_TARIFF_MODE = "feed_in_tariff_mode"
 CONF_FEED_IN_TARIFF_VALUE = "feed_in_tariff_value"
 CONF_FEED_IN_TARIFF_ENTITY = "feed_in_tariff_entity"
@@ -28,7 +30,8 @@ TARIFF_MODE_FIXED = "fixed"
 TARIFF_MODE_ENTITY = "entity"
 TARIFF_MODES = [TARIFF_MODE_FIXED, TARIFF_MODE_ENTITY]
 
-DEFAULT_HISTORICAL_OFFSET = 0.0
+DEFAULT_HISTORICAL_SAVINGS_EUR = 0.0
+DEFAULT_HISTORICAL_FEED_IN_EUR = 0.0
 DEFAULT_MIN_HISTORY_DAYS = 60
 DEFAULT_ROLLING_WINDOW_DAYS = 365
 DEFAULT_UPDATE_INTERVAL_MINUTES = 5
@@ -44,4 +47,5 @@ VALUE_AMORTIZATION_PROGRESS_PCT = "amortization_progress_pct"
 VALUE_AMORTIZATION_DATE = "amortization_date"
 VALUE_DAYS_TO_AMORTIZATION = "days_to_amortization"
 VALUE_AVERAGE_DAILY_YIELD = "average_daily_yield"
+VALUE_SYSTEM_AGE_DAYS = "system_age_days"
 VALUE_IS_AMORTIZED = "is_amortized"

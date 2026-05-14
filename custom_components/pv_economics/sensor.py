@@ -32,6 +32,7 @@ from .const import (
     VALUE_SELF_CONSUMPTION,
     VALUE_SELF_CONSUMPTION_RATE,
     VALUE_SELF_SUFFICIENCY,
+    VALUE_SYSTEM_AGE_DAYS,
     VALUE_TOTAL_SAVINGS,
     VALUE_TOTAL_YIELD,
 )
@@ -140,6 +141,13 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
+    ),
+    PVEconomicsSensorEntityDescription(
+        key=VALUE_SYSTEM_AGE_DAYS,
+        translation_key=VALUE_SYSTEM_AGE_DAYS,
+        value_key=VALUE_SYSTEM_AGE_DAYS,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTime.DAYS,
     ),
 )
 

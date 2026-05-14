@@ -7,12 +7,24 @@
         "data": {
           "installation_cost": "Installationskosten",
           "commissioning_date": "Inbetriebnahmedatum",
-          "historical_offset": "Historischer Ertrag"
+          "statistics_start_date": "Tracking-Startdatum"
         },
         "data_description": {
           "installation_cost": "Gesamtkosten der PV-Anlage inklusive Hardware, Installation und sonstiger Einmalkosten. Wird als Zielwert für die Amortisationsberechnung verwendet.",
-          "commissioning_date": "Das Datum, an dem deine PV-Anlage erstmals in Betrieb genommen wurde. Wird verwendet um das Alter der Anlage zu bestimmen — die Integration benötigt eine Mindestanzahl an Tagen mit Verlaufsdaten, bevor sie ein Amortisationsdatum prognostizieren kann.",
-          "historical_offset": "Bereits ersparter oder verdientes Geld vor der Einrichtung dieser Integration (z. B. aus einer eigenen Tabellenkalkulation). Auf 0 lassen, wenn du die Integration von Anfang an nutzt."
+          "commissioning_date": "Das Datum, an dem deine PV-Anlage erstmals in Betrieb genommen wurde. Wird verwendet, um das Systemalter und die Mindest-Historie für Amortisationsprognosen zu bestimmen.",
+          "statistics_start_date": "Ab diesem Datum liest die Integration HA-Statistiken aus. Setze dieses Datum auf heute, wenn du die Integration jetzt einrichtest. Alle Werte, die du im nächsten Schritt eingibst, sollten deinen Gesamtstand bis einschließlich dieses Datums widerspiegeln."
+        }
+      },
+      "history": {
+        "title": "Bisherige Gesamtwerte",
+        "description": "Gib deine kumulierten Gesamtwerte bis zum Tracking-Startdatum ein. Die Integration addiert alle zukünftigen Erträge auf diese Werte. Lasse die Felder auf 0, wenn du keine Vorwerte hast.",
+        "data": {
+          "historical_savings_eur": "Stromersparnis bis Tracking-Start",
+          "historical_feed_in_eur": "Einspeiseerlös bis Tracking-Start"
+        },
+        "data_description": {
+          "historical_savings_eur": "Gesamte bisher durch Eigenverbrauch erzielte Ersparnis bis zum Tracking-Startdatum (in EUR). Prüfe deine eigenen Aufzeichnungen oder Stromrechnungen.",
+          "historical_feed_in_eur": "Gesamter bisher erhaltener Einspeiseerlös bis zum Tracking-Startdatum (in EUR). Prüfe deine Abrechnungen des Netzbetreibers oder das Wechselrichter-Portal."
         }
       },
       "entities": {
@@ -77,12 +89,24 @@
         "data": {
           "installation_cost": "Installationskosten",
           "commissioning_date": "Inbetriebnahmedatum",
-          "historical_offset": "Historischer Ertrag"
+          "statistics_start_date": "Tracking-Startdatum"
         },
         "data_description": {
           "installation_cost": "Gesamtkosten der PV-Anlage inklusive Hardware, Installation und sonstiger Einmalkosten.",
           "commissioning_date": "Das Datum, an dem deine PV-Anlage erstmals in Betrieb genommen wurde.",
-          "historical_offset": "Bereits erzielte Einnahmen vor Einrichtung dieser Integration. Auf 0 lassen, wenn nicht zutreffend."
+          "statistics_start_date": "Ab diesem Datum werden HA-Statistiken ausgelesen. Eine Änderung verschiebt den Bezugszeitraum der Vorwerte."
+        }
+      },
+      "history": {
+        "title": "Bisherige Gesamtwerte",
+        "description": "Bearbeite deine kumulierten Gesamtwerte bis zum Tracking-Startdatum.",
+        "data": {
+          "historical_savings_eur": "Stromersparnis bis Tracking-Start",
+          "historical_feed_in_eur": "Einspeiseerlös bis Tracking-Start"
+        },
+        "data_description": {
+          "historical_savings_eur": "Gesamte bisher durch Eigenverbrauch erzielte Ersparnis bis zum Tracking-Startdatum (in EUR).",
+          "historical_feed_in_eur": "Gesamter bisher erhaltener Einspeiseerlös bis zum Tracking-Startdatum (in EUR)."
         }
       },
       "entities": {
@@ -169,6 +193,9 @@
       },
       "average_daily_yield": {
         "name": "Durchschnittlicher Tagesertrag"
+      },
+      "system_age_days": {
+        "name": "Anlagenalter"
       }
     },
     "binary_sensor": {

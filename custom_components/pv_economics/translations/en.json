@@ -7,12 +7,24 @@
         "data": {
           "installation_cost": "Installation cost",
           "commissioning_date": "Commissioning date",
-          "historical_offset": "Historical earnings"
+          "statistics_start_date": "Tracking start date"
         },
         "data_description": {
           "installation_cost": "Total cost of the PV system including hardware, installation, and any other one-time expenses. Used to calculate when the system breaks even.",
-          "commissioning_date": "The date your PV system was first switched on. Used to determine system age — the integration needs at least a minimum number of days of history before projecting a break-even date.",
-          "historical_offset": "Total money already saved or earned by the system before this integration was set up (e.g. if you track this in a spreadsheet). Leave at 0 if you are setting this up from day one."
+          "commissioning_date": "The date your PV system was first switched on. Used to calculate system age and the minimum history requirement for amortization projections.",
+          "statistics_start_date": "The date from which this integration will read HA statistics. Set this to today if you are setting up the integration now. All values you enter on the next screen should reflect your totals up to and including this date."
+        }
+      },
+      "history": {
+        "title": "Pre-tracking totals",
+        "description": "Enter your cumulative financial totals as of the tracking start date. The integration will add any new earnings on top of these values. Leave at 0 if you have no prior data.",
+        "data": {
+          "historical_savings_eur": "Electricity savings up to tracking start",
+          "historical_feed_in_eur": "Feed-in revenue up to tracking start"
+        },
+        "data_description": {
+          "historical_savings_eur": "Total money saved through self-consumption up to your tracking start date (in EUR). Check your own records or electricity bills.",
+          "historical_feed_in_eur": "Total feed-in revenue received up to your tracking start date (in EUR). Check your utility statements or inverter portal."
         }
       },
       "entities": {
@@ -77,12 +89,24 @@
         "data": {
           "installation_cost": "Installation cost",
           "commissioning_date": "Commissioning date",
-          "historical_offset": "Historical earnings"
+          "statistics_start_date": "Tracking start date"
         },
         "data_description": {
           "installation_cost": "Total cost of the PV system including hardware, installation, and any other one-time expenses.",
           "commissioning_date": "The date your PV system was first switched on.",
-          "historical_offset": "Total money already saved or earned before this integration was set up. Leave at 0 if not applicable."
+          "statistics_start_date": "The date from which HA statistics are read. Changing this will shift which period the pre-tracking totals cover."
+        }
+      },
+      "history": {
+        "title": "Pre-tracking totals",
+        "description": "Edit your cumulative financial totals as of the tracking start date.",
+        "data": {
+          "historical_savings_eur": "Electricity savings up to tracking start",
+          "historical_feed_in_eur": "Feed-in revenue up to tracking start"
+        },
+        "data_description": {
+          "historical_savings_eur": "Total money saved through self-consumption up to your tracking start date (in EUR).",
+          "historical_feed_in_eur": "Total feed-in revenue received up to your tracking start date (in EUR)."
         }
       },
       "entities": {
@@ -169,6 +193,9 @@
       },
       "average_daily_yield": {
         "name": "Average daily yield"
+      },
+      "system_age_days": {
+        "name": "System age"
       }
     },
     "binary_sensor": {
