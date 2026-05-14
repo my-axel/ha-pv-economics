@@ -155,6 +155,9 @@
       "total_yield": {
         "name": "Gesamtertrag"
       },
+      "net_yield": {
+        "name": "Nettoertrag"
+      },
       "amortization_progress": {
         "name": "Amortisationsfortschritt"
       },

@@ -53,6 +53,7 @@ from .const import (
     VALUE_AMORTIZATION_PROGRESS_PCT,
     VALUE_FEED_IN_REVENUE,
     VALUE_IS_AMORTIZED,
+    VALUE_NET_YIELD,
     VALUE_SELF_CONSUMPTION,
     VALUE_SELF_CONSUMPTION_RATE,
     VALUE_SELF_SUFFICIENCY,
@@ -216,6 +217,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             VALUE_TOTAL_SAVINGS: round(savings_eur, 2),
             VALUE_FEED_IN_REVENUE: round(feed_in_eur, 2),
             VALUE_TOTAL_YIELD: round(total_yield, 2),
+            VALUE_NET_YIELD: round(total_yield - installation_cost, 2),
             VALUE_AMORTIZATION_PROGRESS: round(total_yield, 2),
             VALUE_AMORTIZATION_PROGRESS_PCT: (
                 round(progress_pct * 100.0, 1) if progress_pct is not None else None
