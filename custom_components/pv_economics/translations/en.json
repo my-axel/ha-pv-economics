@@ -6,6 +6,7 @@
         "description": "Configure the PV installation economics and source entities.",
         "data": {
           "installation_cost": "Installation cost",
+          "commissioning_date": "Commissioning date",
           "historical_offset": "Historical offset",
           "feed_in_tariff_mode": "Feed-in tariff mode",
           "electricity_price_mode": "Electricity price mode",
@@ -16,7 +17,8 @@
           "rolling_window_days": "Rolling window days"
         },
         "data_description": {
-          "historical_offset": "Savings or yield before tracking started.",
+          "commissioning_date": "The date the PV system was first switched on.",
+          "historical_offset": "Total earnings before this integration was set up.",
           "grid_import_entity": "Optional. Required only for the self-sufficiency sensor."
         }
       },
@@ -51,6 +53,7 @@
         "description": "Edit the PV installation economics, source entities, and update interval.",
         "data": {
           "installation_cost": "Installation cost",
+          "commissioning_date": "Commissioning date",
           "historical_offset": "Historical offset",
           "feed_in_tariff_mode": "Feed-in tariff mode",
           "electricity_price_mode": "Electricity price mode",
@@ -60,6 +63,10 @@
           "min_history_days": "Minimum history days",
           "rolling_window_days": "Rolling window days",
           "update_interval_minutes": "Update interval"
+        },
+        "data_description": {
+          "commissioning_date": "The date the PV system was first switched on.",
+          "historical_offset": "Total earnings before this integration was set up."
         }
       },
       "feed_in_tariff": {

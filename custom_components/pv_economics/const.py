@@ -9,6 +9,7 @@ DOMAIN = "pv_economics"
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 CONF_INSTALLATION_COST = "installation_cost"
+CONF_COMMISSIONING_DATE = "commissioning_date"
 CONF_HISTORICAL_OFFSET = "historical_offset"
 CONF_FEED_IN_TARIFF_MODE = "feed_in_tariff_mode"
 CONF_FEED_IN_TARIFF_VALUE = "feed_in_tariff_value"

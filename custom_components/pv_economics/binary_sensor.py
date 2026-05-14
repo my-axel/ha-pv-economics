@@ -59,5 +59,6 @@ class PVEconomicsBinarySensor(
     @property
     def is_on(self) -> bool | None:
         """Return whether the PV installation is amortized."""
-        # TODO: Return value from coordinator data once calculations exist.
-        return None
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.get(VALUE_IS_AMORTIZED)

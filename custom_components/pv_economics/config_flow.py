@@ -13,6 +13,8 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.helpers.selector import (
+    DateSelector,
+    DateSelectorConfig,
     EntitySelector,
     EntitySelectorConfig,
     NumberSelector,
@@ -24,6 +26,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import (
+    CONF_COMMISSIONING_DATE,
     CONF_ELECTRICITY_PRICE_ENTITY,
     CONF_ELECTRICITY_PRICE_MODE,
     CONF_ELECTRICITY_PRICE_VALUE,
@@ -121,6 +124,9 @@ def _base_schema(defaults: dict[str, Any]) -> vol.Schema:
         {
             _required_key(CONF_INSTALLATION_COST, defaults): _number_selector(
                 min_value=0
+            ),
+            _required_key(CONF_COMMISSIONING_DATE, defaults): DateSelector(
+                DateSelectorConfig()
             ),
             _optional_key(
                 CONF_HISTORICAL_OFFSET,

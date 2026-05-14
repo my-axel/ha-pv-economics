@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -32,7 +33,16 @@ from .const import (
     VALUE_TOTAL_SAVINGS,
     VALUE_TOTAL_YIELD,
 )
-from .coordinator import PVEconomicsCoordinator
+from .coordinator import (
+    _PRICE_FALLBACK_KEY,
+    _TARIFF_FALLBACK_KEY,
+    PVEconomicsCoordinator,
+)
+
+
+def _currency_unit(hass: HomeAssistant) -> str:
+    """Return Home Assistant's configured currency."""
+    return hass.config.currency
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -41,11 +51,7 @@ class PVEconomicsSensorEntityDescription(SensorEntityDescription):
 
     value_key: str
     unit_fn: Callable[[HomeAssistant], str | None] | None = None
-
-
-def _currency_unit(hass: HomeAssistant) -> str:
-    """Return Home Assistant's configured currency."""
-    return hass.config.currency
+    fallback_attr_key: str | None = None
 
 
 SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
@@ -78,6 +84,7 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         unit_fn=_currency_unit,
+        fallback_attr_key=_PRICE_FALLBACK_KEY,
     ),
     PVEconomicsSensorEntityDescription(
         key=VALUE_FEED_IN_REVENUE,
@@ -86,6 +93,7 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         unit_fn=_currency_unit,
+        fallback_attr_key=_TARIFF_FALLBACK_KEY,
     ),
     PVEconomicsSensorEntityDescription(
         key=VALUE_TOTAL_YIELD,
@@ -130,9 +138,7 @@ async def async_setup_entry(
 
     if CONF_GRID_IMPORT_ENTITY not in {**entry.data, **entry.options}:
         descriptions = [
-            description
-            for description in descriptions
-            if description.key != VALUE_SELF_SUFFICIENCY
+            d for d in descriptions if d.key != VALUE_SELF_SUFFICIENCY
         ]
 
     async_add_entities(
@@ -169,6 +175,18 @@ class PVEconomicsSensor(CoordinatorEntity[PVEconomicsCoordinator], SensorEntity)
 
     @property
     def native_value(self) -> float | date | None:
-        """Return the sensor value."""
-        # TODO: Return values from coordinator data once calculations exist.
+        """Return the sensor value from coordinator data."""
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.get(self.entity_description.value_key)  # type: ignore[return-value]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Expose fallback flag when an entity price had no long-term statistics."""
+        key = self.entity_description.fallback_attr_key
+        if key is None or not self.coordinator.data:
+            return None
+        fallback = self.coordinator.data.get(key, False)
+        if fallback:
+            return {"statistics_fallback": True}
         return None

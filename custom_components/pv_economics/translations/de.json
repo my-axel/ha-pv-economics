@@ -6,6 +6,7 @@
         "description": "Konfiguriere die Wirtschaftlichkeit der PV-Anlage und die Quell-Entitäten.",
         "data": {
           "installation_cost": "Installationskosten",
+          "commissioning_date": "Inbetriebnahmedatum",
           "historical_offset": "Historischer Offset",
           "feed_in_tariff_mode": "Einspeisevergütung-Modus",
           "electricity_price_mode": "Strompreis-Modus",
@@ -16,7 +17,8 @@
           "rolling_window_days": "Rollierendes Fenster in Tagen"
         },
         "data_description": {
-          "historical_offset": "Ersparnisse oder Erträge vor Beginn der Aufzeichnung.",
+          "commissioning_date": "Das Datum, an dem die PV-Anlage erstmals in Betrieb genommen wurde.",
+          "historical_offset": "Gesamtertrag vor der Einrichtung dieser Integration.",
           "grid_import_entity": "Optional. Nur für den Autarkiegrad-Sensor erforderlich."
         }
       },
@@ -51,6 +53,7 @@
         "description": "Bearbeite Wirtschaftlichkeit, Quell-Entitäten und Aktualisierungsintervall.",
         "data": {
           "installation_cost": "Installationskosten",
+          "commissioning_date": "Inbetriebnahmedatum",
           "historical_offset": "Historischer Offset",
           "feed_in_tariff_mode": "Einspeisevergütung-Modus",
           "electricity_price_mode": "Strompreis-Modus",
@@ -60,6 +63,10 @@
           "min_history_days": "Mindest-Historie in Tagen",
           "rolling_window_days": "Rollierendes Fenster in Tagen",
           "update_interval_minutes": "Aktualisierungsintervall"
+        },
+        "data_description": {
+          "commissioning_date": "Das Datum, an dem die PV-Anlage erstmals in Betrieb genommen wurde.",
+          "historical_offset": "Gesamtertrag vor der Einrichtung dieser Integration."
         }
       },
       "feed_in_tariff": {
