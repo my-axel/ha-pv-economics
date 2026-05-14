@@ -228,4 +228,8 @@ def calculate_amortization_date(
         return None
 
     days_remaining = ceil((installation_cost - total_yield) / avg_daily)
-    return date.fromordinal(today.toordinal() + days_remaining)
+    target_ordinal = today.toordinal() + days_remaining
+    if target_ordinal > date.max.toordinal():
+        # Projection lands past year 9999 — too far out to be meaningful.
+        return None
+    return date.fromordinal(target_ordinal)

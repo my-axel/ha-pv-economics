@@ -352,6 +352,16 @@ def test_amortization_date_already_amortized_by_offset() -> None:
     assert result is None
 
 
+def test_amortization_date_projection_overflow_returns_none() -> None:
+    # Tiny avg_daily yield with huge remaining cost → projection past year 9999
+    daily = [_daily(i, 0.0001) for i in range(100, 200)]
+    result = calculate_amortization_date(
+        daily, 1_000_000.0, 0.0, 0.0, _COMMISSIONING, 60, 365, _TODAY
+    )
+    # days_remaining would be ~10 billion days → past date.max → None
+    assert result is None
+
+
 def test_amortization_date_offset_alone_covers_cost_with_ha_data() -> None:
     # Offset alone >= installation_cost; HA has data but break-even predates tracking
     daily = [_daily(i, 2.0) for i in range(100, 110)]
