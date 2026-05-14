@@ -1,31 +1,51 @@
 # PV Economics
 
-PV Economics is a HACS-compatible Home Assistant custom integration for calculating the financial performance of a PV installation.
+[![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
 
-This repository is currently an initial skeleton. Business logic for statistics fetching and calculations is intentionally not implemented yet.
+Home Assistant integration that calculates the financial performance of a PV installation. It reads energy data from HA long-term statistics — no cloud, no external dependencies.
 
-## Planned Features
+## What it tracks
 
-- Calculate PV self-consumption from long-term statistics.
-- Calculate self-consumption rate and optional self-sufficiency.
-- Calculate electricity savings from fixed or entity-based electricity prices.
-- Calculate feed-in revenue from fixed or entity-based feed-in tariffs.
-- Calculate total yield, amortization progress, and amortization date.
-- Use Home Assistant recorder statistics instead of maintaining custom energy counters.
-- Support HACS validation and Home Assistant test workflows.
+- **Self-consumption** and self-consumption rate
+- **Self-sufficiency** (optional, requires grid import sensor)
+- **Electricity savings** — fixed price or dynamic hourly price entity
+- **Feed-in revenue** — fixed tariff or dynamic hourly tariff entity
+- **Total yield** and amortization progress
+- **Amortization date** — projected break-even based on recent performance
 
-## Scope
+Out of scope: surplus management, device control, production forecasting, battery correction.
 
-PV Economics focuses only on economics. It does not perform surplus management, device control, production forecasting, tax handling, battery correction, or maintenance-cost modeling.
+## Requirements
+
+- Home Assistant 2024.10+
+- Energy sensors with long-term statistics (`total_increasing`)
 
 ## Installation
 
-This integration is not ready for end users yet. Once released, install it through HACS as a custom repository and configure it from the Home Assistant UI.
+1. Add this repository to HACS as a custom repository
+2. Install **PV Economics**
+3. Restart Home Assistant
+4. Add the integration via **Settings → Devices & Services**
+
+## Configuration
+
+| Field | Description |
+|---|---|
+| Installation cost | Total cost of the PV system |
+| Commissioning date | Date the system was first switched on |
+| Historical offset | Earnings before this integration was set up |
+| PV production entity | Energy sensor for total production |
+| Grid export entity | Energy sensor for grid export |
+| Grid import entity | *(Optional)* Required for self-sufficiency |
+| Electricity price | Fixed ct/kWh or a sensor entity |
+| Feed-in tariff | Fixed ct/kWh or a sensor entity |
+
+All settings can be changed after setup via the integration's **Configure** button.
 
 ## Development
 
 ```bash
-pytest
-ruff check .
-mypy custom_components
+uv pip install homeassistant pytest pytest-asyncio
+.venv/bin/python -m pytest
+.venv/bin/ruff check custom_components/pv_economics/
 ```
