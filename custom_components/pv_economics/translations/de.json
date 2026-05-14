@@ -1,0 +1,119 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "PV Economics",
+        "description": "Konfiguriere die Wirtschaftlichkeit der PV-Anlage und die Quell-Entitäten.",
+        "data": {
+          "installation_cost": "Installationskosten",
+          "historical_offset": "Historischer Offset",
+          "feed_in_tariff_mode": "Einspeisevergütung-Modus",
+          "electricity_price_mode": "Strompreis-Modus",
+          "pv_production_entity": "PV-Erzeugungsentität",
+          "grid_export_entity": "Netzeinspeisungsentität",
+          "grid_import_entity": "Netzbezugsentität",
+          "min_history_days": "Mindest-Historie in Tagen",
+          "rolling_window_days": "Rollierendes Fenster in Tagen"
+        },
+        "data_description": {
+          "historical_offset": "Ersparnisse oder Erträge vor Beginn der Aufzeichnung.",
+          "grid_import_entity": "Optional. Nur für den Autarkiegrad-Sensor erforderlich."
+        }
+      },
+      "feed_in_tariff": {
+        "title": "Einspeisevergütung",
+        "description": "Konfiguriere die Quelle der Einspeisevergütung.",
+        "data": {
+          "feed_in_tariff_value": "Einspeisevergütung",
+          "feed_in_tariff_entity": "Einspeisevergütung-Entität"
+        }
+      },
+      "electricity_price": {
+        "title": "Strompreis",
+        "description": "Konfiguriere die Quelle des Strompreises. {statistics_note}",
+        "data": {
+          "electricity_price_value": "Strompreis",
+          "electricity_price_entity": "Strompreis-Entität"
+        }
+      }
+    },
+    "error": {
+      "unknown": "Unerwarteter Fehler"
+    },
+    "abort": {
+      "already_configured": "PV Economics ist bereits konfiguriert"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "PV Economics Optionen",
+        "description": "Bearbeite Wirtschaftlichkeit, Quell-Entitäten und Aktualisierungsintervall.",
+        "data": {
+          "installation_cost": "Installationskosten",
+          "historical_offset": "Historischer Offset",
+          "feed_in_tariff_mode": "Einspeisevergütung-Modus",
+          "electricity_price_mode": "Strompreis-Modus",
+          "pv_production_entity": "PV-Erzeugungsentität",
+          "grid_export_entity": "Netzeinspeisungsentität",
+          "grid_import_entity": "Netzbezugsentität",
+          "min_history_days": "Mindest-Historie in Tagen",
+          "rolling_window_days": "Rollierendes Fenster in Tagen",
+          "update_interval_minutes": "Aktualisierungsintervall"
+        }
+      },
+      "feed_in_tariff": {
+        "title": "Einspeisevergütung",
+        "description": "Bearbeite die Quelle der Einspeisevergütung.",
+        "data": {
+          "feed_in_tariff_value": "Einspeisevergütung",
+          "feed_in_tariff_entity": "Einspeisevergütung-Entität"
+        }
+      },
+      "electricity_price": {
+        "title": "Strompreis",
+        "description": "Bearbeite die Quelle des Strompreises. {statistics_note}",
+        "data": {
+          "electricity_price_value": "Strompreis",
+          "electricity_price_entity": "Strompreis-Entität"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "self_consumption": {
+        "name": "Eigenverbrauch"
+      },
+      "self_consumption_rate": {
+        "name": "Eigenverbrauchsquote"
+      },
+      "self_sufficiency": {
+        "name": "Autarkiegrad"
+      },
+      "total_savings": {
+        "name": "Gesamtersparnis"
+      },
+      "feed_in_revenue": {
+        "name": "Einspeiseerlös"
+      },
+      "total_yield": {
+        "name": "Gesamtertrag"
+      },
+      "amortization_progress": {
+        "name": "Amortisationsfortschritt"
+      },
+      "amortization_progress_pct": {
+        "name": "Amortisationsfortschritt"
+      },
+      "amortization_date": {
+        "name": "Amortisationsdatum"
+      }
+    },
+    "binary_sensor": {
+      "is_amortized": {
+        "name": "Ist amortisiert"
+      }
+    }
+  }
+}

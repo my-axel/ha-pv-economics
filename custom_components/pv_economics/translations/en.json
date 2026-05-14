@@ -1,0 +1,119 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "PV Economics",
+        "description": "Configure the PV installation economics and source entities.",
+        "data": {
+          "installation_cost": "Installation cost",
+          "historical_offset": "Historical offset",
+          "feed_in_tariff_mode": "Feed-in tariff mode",
+          "electricity_price_mode": "Electricity price mode",
+          "pv_production_entity": "PV production entity",
+          "grid_export_entity": "Grid export entity",
+          "grid_import_entity": "Grid import entity",
+          "min_history_days": "Minimum history days",
+          "rolling_window_days": "Rolling window days"
+        },
+        "data_description": {
+          "historical_offset": "Savings or yield before tracking started.",
+          "grid_import_entity": "Optional. Required only for the self-sufficiency sensor."
+        }
+      },
+      "feed_in_tariff": {
+        "title": "Feed-in tariff",
+        "description": "Configure the feed-in tariff source.",
+        "data": {
+          "feed_in_tariff_value": "Feed-in tariff",
+          "feed_in_tariff_entity": "Feed-in tariff entity"
+        }
+      },
+      "electricity_price": {
+        "title": "Electricity price",
+        "description": "Configure the electricity price source. {statistics_note}",
+        "data": {
+          "electricity_price_value": "Electricity price",
+          "electricity_price_entity": "Electricity price entity"
+        }
+      }
+    },
+    "error": {
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "PV Economics is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "PV Economics options",
+        "description": "Edit the PV installation economics, source entities, and update interval.",
+        "data": {
+          "installation_cost": "Installation cost",
+          "historical_offset": "Historical offset",
+          "feed_in_tariff_mode": "Feed-in tariff mode",
+          "electricity_price_mode": "Electricity price mode",
+          "pv_production_entity": "PV production entity",
+          "grid_export_entity": "Grid export entity",
+          "grid_import_entity": "Grid import entity",
+          "min_history_days": "Minimum history days",
+          "rolling_window_days": "Rolling window days",
+          "update_interval_minutes": "Update interval"
+        }
+      },
+      "feed_in_tariff": {
+        "title": "Feed-in tariff",
+        "description": "Edit the feed-in tariff source.",
+        "data": {
+          "feed_in_tariff_value": "Feed-in tariff",
+          "feed_in_tariff_entity": "Feed-in tariff entity"
+        }
+      },
+      "electricity_price": {
+        "title": "Electricity price",
+        "description": "Edit the electricity price source. {statistics_note}",
+        "data": {
+          "electricity_price_value": "Electricity price",
+          "electricity_price_entity": "Electricity price entity"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "self_consumption": {
+        "name": "Self-consumption"
+      },
+      "self_consumption_rate": {
+        "name": "Self-consumption rate"
+      },
+      "self_sufficiency": {
+        "name": "Self-sufficiency"
+      },
+      "total_savings": {
+        "name": "Total savings"
+      },
+      "feed_in_revenue": {
+        "name": "Feed-in revenue"
+      },
+      "total_yield": {
+        "name": "Total yield"
+      },
+      "amortization_progress": {
+        "name": "Amortization progress"
+      },
+      "amortization_progress_pct": {
+        "name": "Amortization progress"
+      },
+      "amortization_date": {
+        "name": "Amortization date"
+      }
+    },
+    "binary_sensor": {
+      "is_amortized": {
+        "name": "Is amortized"
+      }
+    }
+  }
+}

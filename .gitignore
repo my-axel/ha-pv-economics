@@ -1,0 +1,35 @@
+.DS_Store
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test, lint, and type-check caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual environments and local tooling state
+.venv/
+venv/
+env/
+uv.lock
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Home Assistant local test/config artifacts
+.storage/
+home-assistant.log*
+home-assistant_v2.db*
+
+# Local agent/workspace metadata
+.agents/
+.claude/
+.codex/

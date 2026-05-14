@@ -1,0 +1,32 @@
+[project]
+name = "ha-pv-economics"
+version = "0.1.0"
+description = "Home Assistant custom integration for PV economics"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+exclude = [".agents", ".claude", ".codex", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "T20", "SIM", "RUF"]
+ignore = ["RUF012"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_configs = true
+disallow_any_generics = false
+namespace_packages = true
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["homeassistant.*"]
+ignore_missing_imports = true
