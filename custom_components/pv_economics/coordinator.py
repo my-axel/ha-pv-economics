@@ -186,7 +186,6 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             price_mode,
             price_entity,
             price_fallback,
-            sc_total,
         )
 
         # Feed-in revenue
@@ -197,7 +196,6 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             tariff_mode,
             tariff_entity,
             tariff_fallback,
-            sum(kwh for _, kwh in exp_deltas),
         )
 
         savings_eur = calculate_savings(hourly_savings)
@@ -267,7 +265,6 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         price_mode: str,
         price_entity: str | None,
         price_fallback: bool,
-        sc_total_kwh: float,
     ) -> list[tuple[datetime, float]]:
         """Return per-hour savings in EUR."""
         if price_mode != TARIFF_MODE_ENTITY:
@@ -277,7 +274,9 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
 
         if price_fallback or not price_entity:
-            # Fall back to current state * total kWh
+            # Fallback: apply the current sensor state uniformly to every hour
+            # so daily aggregation stays meaningful (the total equals
+            # sc_total_kwh * current_price either way).
             state = self.hass.states.get(price_entity or "")
             if (
                 price_entity
@@ -285,9 +284,8 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 and state.state not in ("unknown", "unavailable")
             ):
                 try:
-                    current_price = float(state.state)
-                    savings_eur = sc_total_kwh * current_price / 100.0
-                    return [(sc_hourly[0][0], savings_eur)] if sc_hourly else []
+                    current_price_eur = float(state.state) / 100.0
+                    return [(ts, kwh * current_price_eur) for ts, kwh in sc_hourly]
                 except ValueError:
                     pass
             return []
@@ -308,7 +306,6 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         tariff_mode: str,
         tariff_entity: str | None,
         tariff_fallback: bool,
-        exp_total_kwh: float,
     ) -> list[tuple[datetime, float]]:
         """Return per-hour feed-in revenue in EUR."""
         if tariff_mode != TARIFF_MODE_ENTITY:
@@ -318,6 +315,8 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
 
         if tariff_fallback or not tariff_entity:
+            # Fallback: apply the current sensor state uniformly to every hour
+            # so daily aggregation stays meaningful.
             state = self.hass.states.get(tariff_entity or "")
             if (
                 tariff_entity
@@ -325,9 +324,8 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 and state.state not in ("unknown", "unavailable")
             ):
                 try:
-                    current_tariff = float(state.state)
-                    revenue_eur = exp_total_kwh * current_tariff / 100.0
-                    return [(exp_deltas[0][0], revenue_eur)] if exp_deltas else []
+                    current_tariff_eur = float(state.state) / 100.0
+                    return [(ts, kwh * current_tariff_eur) for ts, kwh in exp_deltas]
                 except ValueError:
                     pass
             return []
