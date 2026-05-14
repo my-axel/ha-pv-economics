@@ -15,6 +15,7 @@ from .calculations import (
     aggregate_daily_yields,
     calculate_amortization_date,
     calculate_amortization_progress_pct,
+    calculate_average_daily_yield,
     calculate_feed_in_revenue,
     calculate_hourly_self_consumption,
     calculate_savings,
@@ -49,8 +50,9 @@ from .const import (
     DOMAIN,
     TARIFF_MODE_ENTITY,
     VALUE_AMORTIZATION_DATE,
-    VALUE_AMORTIZATION_PROGRESS,
     VALUE_AMORTIZATION_PROGRESS_PCT,
+    VALUE_AVERAGE_DAILY_YIELD,
+    VALUE_DAYS_TO_AMORTIZATION,
     VALUE_FEED_IN_REVENUE,
     VALUE_IS_AMORTIZED,
     VALUE_NET_YIELD,
@@ -194,6 +196,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
         daily_yields = aggregate_daily_yields(hourly_savings, hourly_feed_in)
+        today = date.today()
 
         amort_date = calculate_amortization_date(
             daily_yields,
@@ -203,8 +206,14 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             commissioning_date,
             min_history_days,
             rolling_window_days,
-            date.today(),
+            today,
         )
+
+        avg_daily = calculate_average_daily_yield(daily_yields, rolling_window_days)
+
+        days_to_amort: int | None = None
+        if amort_date is not None:
+            days_to_amort = max(0, (amort_date - today).days)
 
         return {
             VALUE_SELF_CONSUMPTION: round(sc_total, 3),
@@ -218,11 +227,14 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             VALUE_FEED_IN_REVENUE: round(feed_in_eur, 2),
             VALUE_TOTAL_YIELD: round(total_yield, 2),
             VALUE_NET_YIELD: round(total_yield - installation_cost, 2),
-            VALUE_AMORTIZATION_PROGRESS: round(total_yield, 2),
             VALUE_AMORTIZATION_PROGRESS_PCT: (
                 round(progress_pct * 100.0, 1) if progress_pct is not None else None
             ),
             VALUE_AMORTIZATION_DATE: amort_date,
+            VALUE_DAYS_TO_AMORTIZATION: days_to_amort,
+            VALUE_AVERAGE_DAILY_YIELD: (
+                round(avg_daily, 2) if avg_daily is not None else None
+            ),
             VALUE_IS_AMORTIZED: total_yield >= installation_cost,
             _PRICE_FALLBACK_KEY: price_fallback,
             _TARIFF_FALLBACK_KEY: tariff_fallback,

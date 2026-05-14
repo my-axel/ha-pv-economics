@@ -157,6 +157,17 @@ def calculate_total_yield(
     return savings_eur + feed_in_revenue_eur + historical_offset
 
 
+def calculate_average_daily_yield(
+    daily_yields: list[tuple[date, float]],
+    rolling_window_days: int,
+) -> float | None:
+    """Return avg EUR/day over the rolling window. None when no data."""
+    if not daily_yields:
+        return None
+    window = daily_yields[-rolling_window_days:]
+    return sum(y for _, y in window) / len(window)
+
+
 def calculate_amortization_progress_pct(
     total_yield: float,
     installation_cost: float,

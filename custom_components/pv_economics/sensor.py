@@ -13,7 +13,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, UnitOfEnergy
+from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -24,8 +24,9 @@ from .const import (
     CONF_GRID_IMPORT_ENTITY,
     DOMAIN,
     VALUE_AMORTIZATION_DATE,
-    VALUE_AMORTIZATION_PROGRESS,
     VALUE_AMORTIZATION_PROGRESS_PCT,
+    VALUE_AVERAGE_DAILY_YIELD,
+    VALUE_DAYS_TO_AMORTIZATION,
     VALUE_FEED_IN_REVENUE,
     VALUE_NET_YIELD,
     VALUE_SELF_CONSUMPTION,
@@ -83,7 +84,7 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_TOTAL_SAVINGS,
         value_key=VALUE_TOTAL_SAVINGS,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
         fallback_attr_key=_PRICE_FALLBACK_KEY,
     ),
@@ -92,7 +93,7 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_FEED_IN_REVENUE,
         value_key=VALUE_FEED_IN_REVENUE,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
         fallback_attr_key=_TARIFF_FALLBACK_KEY,
     ),
@@ -100,14 +101,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         key=VALUE_TOTAL_YIELD,
         translation_key=VALUE_TOTAL_YIELD,
         value_key=VALUE_TOTAL_YIELD,
-        device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        unit_fn=_currency_unit,
-    ),
-    PVEconomicsSensorEntityDescription(
-        key=VALUE_AMORTIZATION_PROGRESS,
-        translation_key=VALUE_AMORTIZATION_PROGRESS,
-        value_key=VALUE_AMORTIZATION_PROGRESS,
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
@@ -132,6 +125,21 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_AMORTIZATION_DATE,
         value_key=VALUE_AMORTIZATION_DATE,
         device_class=SensorDeviceClass.DATE,
+    ),
+    PVEconomicsSensorEntityDescription(
+        key=VALUE_DAYS_TO_AMORTIZATION,
+        translation_key=VALUE_DAYS_TO_AMORTIZATION,
+        value_key=VALUE_DAYS_TO_AMORTIZATION,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTime.DAYS,
+    ),
+    PVEconomicsSensorEntityDescription(
+        key=VALUE_AVERAGE_DAILY_YIELD,
+        translation_key=VALUE_AVERAGE_DAILY_YIELD,
+        value_key=VALUE_AVERAGE_DAILY_YIELD,
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        unit_fn=_currency_unit,
     ),
 )
 

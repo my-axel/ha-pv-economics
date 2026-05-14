@@ -158,14 +158,17 @@
       "net_yield": {
         "name": "Nettoertrag"
       },
-      "amortization_progress": {
-        "name": "Amortisationsfortschritt"
-      },
       "amortization_progress_pct": {
         "name": "Amortisationsfortschritt"
       },
       "amortization_date": {
         "name": "Amortisationsdatum"
+      },
+      "days_to_amortization": {
+        "name": "Tage bis zur Amortisation"
+      },
+      "average_daily_yield": {
+        "name": "Durchschnittlicher Tagesertrag"
       }
     },
     "binary_sensor": {
