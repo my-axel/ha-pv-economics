@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from homeassistant.components.recorder import get_instance
@@ -39,7 +39,7 @@ async def async_get_hourly_statistics(
     return {
         stat_id: [
             {
-                "start": row["start"],
+                "start": datetime.fromtimestamp(row["start"], tz=UTC),
                 "sum": row.get("sum"),
                 "mean": row.get("mean"),
             }
