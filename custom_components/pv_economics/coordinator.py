@@ -211,10 +211,10 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         progress_pct = calculate_amortization_progress_pct(
             total_yield, installation_cost
         )
-        system_age_days = (today - commissioning_date).days
 
         daily_yields = aggregate_daily_yields(hourly_savings, hourly_feed_in)
         today = date.today()
+        system_age_days = (today - commissioning_date).days
 
         amort_date = calculate_amortization_date(
             daily_yields,
