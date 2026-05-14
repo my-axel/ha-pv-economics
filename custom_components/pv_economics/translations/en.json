@@ -2,40 +2,63 @@
   "config": {
     "step": {
       "user": {
-        "title": "PV Economics",
-        "description": "Configure the PV installation economics and source entities.",
+        "title": "Installation costs",
+        "description": "Enter the financial details of your PV system. These values are the basis for all yield and amortization calculations.",
         "data": {
           "installation_cost": "Installation cost",
           "commissioning_date": "Commissioning date",
-          "historical_offset": "Historical offset",
-          "feed_in_tariff_mode": "Feed-in tariff mode",
-          "electricity_price_mode": "Electricity price mode",
-          "pv_production_entity": "PV production entity",
-          "grid_export_entity": "Grid export entity",
-          "grid_import_entity": "Grid import entity",
-          "min_history_days": "Minimum history days",
-          "rolling_window_days": "Rolling window days"
+          "historical_offset": "Historical earnings"
         },
         "data_description": {
-          "commissioning_date": "The date the PV system was first switched on.",
-          "historical_offset": "Total earnings before this integration was set up.",
-          "grid_import_entity": "Optional. Required only for the self-sufficiency sensor."
+          "installation_cost": "Total cost of the PV system including hardware, installation, and any other one-time expenses. Used to calculate when the system breaks even.",
+          "commissioning_date": "The date your PV system was first switched on. Used to determine system age — the integration needs at least a minimum number of days of history before projecting a break-even date.",
+          "historical_offset": "Total money already saved or earned by the system before this integration was set up (e.g. if you track this in a spreadsheet). Leave at 0 if you are setting this up from day one."
+        }
+      },
+      "entities": {
+        "title": "Energy sensors & pricing",
+        "description": "Select the sensors that provide your production and grid data, and choose how electricity prices and feed-in tariffs are sourced.",
+        "data": {
+          "pv_production_entity": "PV production",
+          "grid_export_entity": "Grid export",
+          "grid_import_entity": "Grid import",
+          "feed_in_tariff_mode": "Feed-in tariff mode",
+          "electricity_price_mode": "Electricity price mode",
+          "min_history_days": "Minimum history",
+          "rolling_window_days": "Projection window"
+        },
+        "data_description": {
+          "pv_production_entity": "Sensor measuring the total energy your PV system has ever produced (kWh, state class: total_increasing). This is usually provided by your inverter integration.",
+          "grid_export_entity": "Sensor measuring the total energy exported to the grid (kWh, total_increasing). Self-consumption is calculated as production minus export.",
+          "grid_import_entity": "Optional. Sensor measuring total energy drawn from the grid (kWh, total_increasing). Only required for the self-sufficiency sensor.",
+          "feed_in_tariff_mode": "Fixed: you enter a static rate in ct/kWh on the next screen. Entity: you select a sensor whose current value is used as the tariff (useful for variable tariffs).",
+          "electricity_price_mode": "Fixed: you enter a static price in ct/kWh on the next screen. Entity: you select a sensor whose value is used as the price (e.g. Tibber, Awattar).",
+          "min_history_days": "Minimum number of days since commissioning before a break-even date is projected. Prevents unreliable estimates when the system is brand new. Default: 60.",
+          "rolling_window_days": "How many recent days are used to calculate the average daily yield for projecting the break-even date. A longer window gives a smoother estimate. Default: 365."
         }
       },
       "feed_in_tariff": {
         "title": "Feed-in tariff",
-        "description": "Configure the feed-in tariff source.",
+        "description": "Configure the rate at which exported energy is compensated.",
         "data": {
           "feed_in_tariff_value": "Feed-in tariff",
           "feed_in_tariff_entity": "Feed-in tariff entity"
+        },
+        "data_description": {
+          "feed_in_tariff_value": "Your feed-in tariff in ct/kWh. Check your energy contract or grid operator confirmation.",
+          "feed_in_tariff_entity": "Sensor providing the current feed-in tariff in ct/kWh. For accurate per-hour calculations, this sensor should have long-term statistics enabled."
         }
       },
       "electricity_price": {
         "title": "Electricity price",
-        "description": "Configure the electricity price source. {statistics_note}",
+        "description": "Configure the price of electricity from the grid. This is used to calculate how much money you save by consuming your own solar power. {statistics_note}",
         "data": {
           "electricity_price_value": "Electricity price",
           "electricity_price_entity": "Electricity price entity"
+        },
+        "data_description": {
+          "electricity_price_value": "Your electricity price in ct/kWh. Use the rate you pay for grid electricity, excluding any fixed fees.",
+          "electricity_price_entity": "Sensor providing the current electricity price in ct/kWh. For accurate per-hour calculations, this sensor should have long-term statistics enabled."
         }
       }
     },
@@ -49,40 +72,65 @@
   "options": {
     "step": {
       "init": {
-        "title": "PV Economics options",
-        "description": "Edit the PV installation economics, source entities, and update interval.",
+        "title": "Installation costs",
+        "description": "Edit the financial details of your PV system.",
         "data": {
           "installation_cost": "Installation cost",
           "commissioning_date": "Commissioning date",
-          "historical_offset": "Historical offset",
+          "historical_offset": "Historical earnings"
+        },
+        "data_description": {
+          "installation_cost": "Total cost of the PV system including hardware, installation, and any other one-time expenses.",
+          "commissioning_date": "The date your PV system was first switched on.",
+          "historical_offset": "Total money already saved or earned before this integration was set up. Leave at 0 if not applicable."
+        }
+      },
+      "entities": {
+        "title": "Energy sensors & pricing",
+        "description": "Edit sensors, pricing modes, and update settings.",
+        "data": {
+          "pv_production_entity": "PV production",
+          "grid_export_entity": "Grid export",
+          "grid_import_entity": "Grid import",
           "feed_in_tariff_mode": "Feed-in tariff mode",
           "electricity_price_mode": "Electricity price mode",
-          "pv_production_entity": "PV production entity",
-          "grid_export_entity": "Grid export entity",
-          "grid_import_entity": "Grid import entity",
-          "min_history_days": "Minimum history days",
-          "rolling_window_days": "Rolling window days",
+          "min_history_days": "Minimum history",
+          "rolling_window_days": "Projection window",
           "update_interval_minutes": "Update interval"
         },
         "data_description": {
-          "commissioning_date": "The date the PV system was first switched on.",
-          "historical_offset": "Total earnings before this integration was set up."
+          "pv_production_entity": "Sensor measuring total energy produced by your PV system (kWh, total_increasing).",
+          "grid_export_entity": "Sensor measuring total energy exported to the grid (kWh, total_increasing).",
+          "grid_import_entity": "Optional. Required for the self-sufficiency sensor.",
+          "feed_in_tariff_mode": "Fixed: static rate in ct/kWh. Entity: sensor-based tariff.",
+          "electricity_price_mode": "Fixed: static price in ct/kWh. Entity: sensor-based price.",
+          "min_history_days": "Minimum days since commissioning before a break-even date is projected. Default: 60.",
+          "rolling_window_days": "Recent days used for the break-even projection. Default: 365.",
+          "update_interval_minutes": "How often the integration recalculates all values. Lower values increase recorder load."
         }
       },
       "feed_in_tariff": {
         "title": "Feed-in tariff",
-        "description": "Edit the feed-in tariff source.",
+        "description": "Edit the rate at which exported energy is compensated.",
         "data": {
           "feed_in_tariff_value": "Feed-in tariff",
           "feed_in_tariff_entity": "Feed-in tariff entity"
+        },
+        "data_description": {
+          "feed_in_tariff_value": "Your feed-in tariff in ct/kWh.",
+          "feed_in_tariff_entity": "Sensor providing the current feed-in tariff in ct/kWh. Should have long-term statistics enabled."
         }
       },
       "electricity_price": {
         "title": "Electricity price",
-        "description": "Edit the electricity price source. {statistics_note}",
+        "description": "Edit the price of electricity from the grid. {statistics_note}",
         "data": {
           "electricity_price_value": "Electricity price",
           "electricity_price_entity": "Electricity price entity"
+        },
+        "data_description": {
+          "electricity_price_value": "Your electricity price in ct/kWh.",
+          "electricity_price_entity": "Sensor providing the current electricity price in ct/kWh. Should have long-term statistics enabled."
         }
       }
     }

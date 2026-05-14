@@ -59,18 +59,15 @@ def _number_selector(
     min_value: float | None = None,
     unit: str | None = None,
 ) -> NumberSelector:
-    """Create a box-mode number selector."""
     config: dict[str, Any] = {"mode": NumberSelectorMode.BOX}
     if min_value is not None:
         config["min"] = min_value
     if unit is not None:
         config["unit_of_measurement"] = unit
-
     return NumberSelector(NumberSelectorConfig(config))
 
 
 def _tariff_mode_selector() -> SelectSelector:
-    """Create the tariff mode selector."""
     return SelectSelector(
         SelectSelectorConfig(
             options=TARIFF_MODES,
@@ -80,7 +77,6 @@ def _tariff_mode_selector() -> SelectSelector:
 
 
 def _energy_entity_selector() -> EntitySelector:
-    """Create an energy entity selector for total-increasing sensors."""
     return EntitySelector(
         EntitySelectorConfig(
             domain="sensor",
@@ -90,7 +86,6 @@ def _energy_entity_selector() -> EntitySelector:
 
 
 def _entity_selector() -> EntitySelector:
-    """Create a generic entity selector."""
     return EntitySelector(EntitySelectorConfig(domain="sensor"))
 
 
@@ -99,7 +94,6 @@ def _required_key(
     defaults: dict[str, Any],
     fallback: Any = _MISSING,
 ) -> vol.Required:
-    """Create a required schema key, omitting empty defaults."""
     default = defaults.get(key, fallback)
     if default is _MISSING or default is None:
         return vol.Required(key)
@@ -111,15 +105,14 @@ def _optional_key(
     defaults: dict[str, Any],
     fallback: Any = _MISSING,
 ) -> vol.Optional:
-    """Create an optional schema key, omitting empty defaults."""
     default = defaults.get(key, fallback)
     if default is _MISSING or default is None:
         return vol.Optional(key)
     return vol.Optional(key, default=default)
 
 
-def _base_schema(defaults: dict[str, Any]) -> vol.Schema:
-    """Create schema for core integration settings."""
+def _costs_schema(defaults: dict[str, Any]) -> vol.Schema:
+    """Schema for installation cost and financial baseline."""
     return vol.Schema(
         {
             _required_key(CONF_INSTALLATION_COST, defaults): _number_selector(
@@ -133,6 +126,23 @@ def _base_schema(defaults: dict[str, Any]) -> vol.Schema:
                 defaults,
                 DEFAULT_HISTORICAL_OFFSET,
             ): _number_selector(),
+        }
+    )
+
+
+def _entities_schema(defaults: dict[str, Any]) -> vol.Schema:
+    """Schema for energy sensors, pricing modes, and projection settings."""
+    return vol.Schema(
+        {
+            _required_key(
+                CONF_PV_PRODUCTION_ENTITY, defaults
+            ): _energy_entity_selector(),
+            _required_key(
+                CONF_GRID_EXPORT_ENTITY, defaults
+            ): _energy_entity_selector(),
+            _optional_key(
+                CONF_GRID_IMPORT_ENTITY, defaults
+            ): _energy_entity_selector(),
             _required_key(
                 CONF_FEED_IN_TARIFF_MODE,
                 defaults,
@@ -143,15 +153,6 @@ def _base_schema(defaults: dict[str, Any]) -> vol.Schema:
                 defaults,
                 TARIFF_MODE_FIXED,
             ): _tariff_mode_selector(),
-            _required_key(
-                CONF_PV_PRODUCTION_ENTITY,
-                defaults,
-            ): _energy_entity_selector(),
-            _required_key(
-                CONF_GRID_EXPORT_ENTITY,
-                defaults,
-            ): _energy_entity_selector(),
-            _optional_key(CONF_GRID_IMPORT_ENTITY, defaults): _energy_entity_selector(),
             _optional_key(
                 CONF_MIN_HISTORY_DAYS,
                 defaults,
@@ -167,14 +168,13 @@ def _base_schema(defaults: dict[str, Any]) -> vol.Schema:
 
 
 def _feed_in_schema(defaults: dict[str, Any], mode: str) -> vol.Schema:
-    """Create schema for feed-in tariff settings."""
+    """Schema for feed-in tariff details."""
     if mode == TARIFF_MODE_ENTITY:
         return vol.Schema(
             {
                 _required_key(CONF_FEED_IN_TARIFF_ENTITY, defaults): _entity_selector()
             }
         )
-
     return vol.Schema(
         {
             _required_key(
@@ -186,7 +186,7 @@ def _feed_in_schema(defaults: dict[str, Any], mode: str) -> vol.Schema:
 
 
 def _electricity_price_schema(defaults: dict[str, Any], mode: str) -> vol.Schema:
-    """Create schema for electricity price settings."""
+    """Schema for electricity price details."""
     if mode == TARIFF_MODE_ENTITY:
         return vol.Schema(
             {
@@ -196,7 +196,6 @@ def _electricity_price_schema(defaults: dict[str, Any], mode: str) -> vol.Schema
                 ): _entity_selector()
             }
         )
-
     return vol.Schema(
         {
             _required_key(
@@ -207,17 +206,10 @@ def _electricity_price_schema(defaults: dict[str, Any], mode: str) -> vol.Schema
     )
 
 
-def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
-    """Create schema for options-only settings."""
-    return vol.Schema(
-        {
-            _optional_key(
-                CONF_UPDATE_INTERVAL_MINUTES,
-                defaults,
-                DEFAULT_UPDATE_INTERVAL_MINUTES,
-            ): _number_selector(min_value=1, unit="min")
-        }
-    )
+_STATISTICS_NOTE = (
+    "Entity-based prices require long-term statistics to be enabled on the sensor. "
+    "Without statistics, the integration falls back to the current sensor state."
+)
 
 
 class PVEconomicsConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -226,36 +218,48 @@ class PVEconomicsConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     def __init__(self) -> None:
-        """Initialize the config flow."""
         self._data: dict[str, Any] = {}
 
     @staticmethod
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
-        """Create the options flow."""
         return PVEconomicsOptionsFlow(config_entry)
 
     async def async_step_user(
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Handle the initial step."""
+        """Step 1: Installation costs and financial baseline."""
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
 
         if user_input is not None:
             self._data.update(user_input)
-            return await self.async_step_feed_in_tariff()
+            return await self.async_step_entities()
 
         return self.async_show_form(
             step_id="user",
-            data_schema=_base_schema(self._data),
+            data_schema=_costs_schema(self._data),
+        )
+
+    async def async_step_entities(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
+        """Step 2: Energy sensors, pricing modes, and projection settings."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_feed_in_tariff()
+
+        return self.async_show_form(
+            step_id="entities",
+            data_schema=_entities_schema(self._data),
         )
 
     async def async_step_feed_in_tariff(
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Handle feed-in tariff details."""
+        """Step 3: Feed-in tariff details."""
         if user_input is not None:
             self._data.update(user_input)
             return await self.async_step_electricity_price()
@@ -270,7 +274,7 @@ class PVEconomicsConfigFlow(ConfigFlow, domain=DOMAIN):
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Handle electricity price details."""
+        """Step 4: Electricity price details."""
         if user_input is not None:
             self._data.update(user_input)
             return self.async_create_entry(title="PV Economics", data=self._data)
@@ -279,9 +283,7 @@ class PVEconomicsConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="electricity_price",
             data_schema=_electricity_price_schema(self._data, mode),
-            description_placeholders={
-                "statistics_note": "Entity prices should expose long-term statistics.",
-            },
+            description_placeholders={"statistics_note": _STATISTICS_NOTE},
         )
 
 
@@ -289,7 +291,6 @@ class PVEconomicsOptionsFlow(OptionsFlow):
     """Handle PV Economics options."""
 
     def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize options flow."""
         self._config_entry = config_entry
         self._data: dict[str, Any] = {
             **config_entry.data,
@@ -300,23 +301,44 @@ class PVEconomicsOptionsFlow(OptionsFlow):
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Handle editable base options."""
+        """Step 1: Edit installation costs and financial baseline."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_entities()
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=_costs_schema(self._data),
+        )
+
+    async def async_step_entities(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
+        """Step 2: Edit energy sensors, pricing modes, and settings."""
         if user_input is not None:
             self._data.update(user_input)
             return await self.async_step_feed_in_tariff()
 
+        schema = _entities_schema(self._data).extend(
+            {
+                _optional_key(
+                    CONF_UPDATE_INTERVAL_MINUTES,
+                    self._data,
+                    DEFAULT_UPDATE_INTERVAL_MINUTES,
+                ): _number_selector(min_value=1, unit="min")
+            }
+        )
         return self.async_show_form(
-            step_id="init",
-            data_schema=_base_schema(self._data).extend(
-                _options_schema(self._data).schema
-            ),
+            step_id="entities",
+            data_schema=schema,
         )
 
     async def async_step_feed_in_tariff(
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Handle editable feed-in tariff details."""
+        """Step 3: Edit feed-in tariff details."""
         if user_input is not None:
             self._data.update(user_input)
             return await self.async_step_electricity_price()
@@ -331,7 +353,7 @@ class PVEconomicsOptionsFlow(OptionsFlow):
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Handle editable electricity price details."""
+        """Step 4: Edit electricity price details."""
         if user_input is not None:
             self._data.update(user_input)
             return self.async_create_entry(title="", data=self._data)
@@ -340,7 +362,5 @@ class PVEconomicsOptionsFlow(OptionsFlow):
         return self.async_show_form(
             step_id="electricity_price",
             data_schema=_electricity_price_schema(self._data, mode),
-            description_placeholders={
-                "statistics_note": "Entity prices should expose long-term statistics.",
-            },
+            description_placeholders={"statistics_note": _STATISTICS_NOTE},
         )

@@ -2,40 +2,63 @@
   "config": {
     "step": {
       "user": {
-        "title": "PV Economics",
-        "description": "Konfiguriere die Wirtschaftlichkeit der PV-Anlage und die Quell-Entitäten.",
+        "title": "Installationskosten",
+        "description": "Gib die finanziellen Eckdaten deiner PV-Anlage ein. Diese Werte sind die Grundlage für alle Ertrags- und Amortisationsberechnungen.",
         "data": {
           "installation_cost": "Installationskosten",
           "commissioning_date": "Inbetriebnahmedatum",
-          "historical_offset": "Historischer Offset",
-          "feed_in_tariff_mode": "Einspeisevergütung-Modus",
-          "electricity_price_mode": "Strompreis-Modus",
-          "pv_production_entity": "PV-Erzeugungsentität",
-          "grid_export_entity": "Netzeinspeisungsentität",
-          "grid_import_entity": "Netzbezugsentität",
-          "min_history_days": "Mindest-Historie in Tagen",
-          "rolling_window_days": "Rollierendes Fenster in Tagen"
+          "historical_offset": "Historischer Ertrag"
         },
         "data_description": {
-          "commissioning_date": "Das Datum, an dem die PV-Anlage erstmals in Betrieb genommen wurde.",
-          "historical_offset": "Gesamtertrag vor der Einrichtung dieser Integration.",
-          "grid_import_entity": "Optional. Nur für den Autarkiegrad-Sensor erforderlich."
+          "installation_cost": "Gesamtkosten der PV-Anlage inklusive Hardware, Installation und sonstiger Einmalkosten. Wird als Zielwert für die Amortisationsberechnung verwendet.",
+          "commissioning_date": "Das Datum, an dem deine PV-Anlage erstmals in Betrieb genommen wurde. Wird verwendet um das Alter der Anlage zu bestimmen — die Integration benötigt eine Mindestanzahl an Tagen mit Verlaufsdaten, bevor sie ein Amortisationsdatum prognostizieren kann.",
+          "historical_offset": "Bereits ersparter oder verdientes Geld vor der Einrichtung dieser Integration (z. B. aus einer eigenen Tabellenkalkulation). Auf 0 lassen, wenn du die Integration von Anfang an nutzt."
+        }
+      },
+      "entities": {
+        "title": "Energiesensoren & Preise",
+        "description": "Wähle die Sensoren für Erzeugung und Netzdaten und lege fest, wie Strompreis und Einspeisevergütung bezogen werden.",
+        "data": {
+          "pv_production_entity": "PV-Erzeugung",
+          "grid_export_entity": "Netzeinspeisung",
+          "grid_import_entity": "Netzbezug",
+          "feed_in_tariff_mode": "Einspeisevergütung-Modus",
+          "electricity_price_mode": "Strompreis-Modus",
+          "min_history_days": "Mindest-Historie",
+          "rolling_window_days": "Prognosefenster"
+        },
+        "data_description": {
+          "pv_production_entity": "Sensor, der die gesamte jemals erzeugte Energie deiner PV-Anlage misst (kWh, Zustandsklasse: total_increasing). Wird in der Regel von der Wechselrichter-Integration bereitgestellt.",
+          "grid_export_entity": "Sensor für die gesamte ins Netz eingespeiste Energie (kWh, total_increasing). Der Eigenverbrauch wird als Erzeugung minus Einspeisung berechnet.",
+          "grid_import_entity": "Optional. Sensor für den gesamten Netzbezug (kWh, total_increasing). Nur für den Autarkiegrad-Sensor erforderlich.",
+          "feed_in_tariff_mode": "Fest: Du gibst im nächsten Schritt einen fixen Wert in ct/kWh ein. Entität: Du wählst einen Sensor, dessen aktueller Wert als Vergütung verwendet wird (sinnvoll bei variablen Tarifen).",
+          "electricity_price_mode": "Fest: Du gibst im nächsten Schritt einen fixen Preis in ct/kWh ein. Entität: Du wählst einen Sensor mit dem aktuellen Strompreis (z. B. Tibber, Awattar).",
+          "min_history_days": "Minimale Anzahl an Tagen seit Inbetriebnahme, bevor ein Amortisationsdatum prognostiziert wird. Verhindert unzuverlässige Schätzungen bei neuen Anlagen. Standard: 60.",
+          "rolling_window_days": "Anzahl der jüngsten Tage, die zur Berechnung des durchschnittlichen Tagesertrags für die Amortisationsprognose genutzt werden. Ein längeres Fenster liefert stabilere Schätzungen. Standard: 365."
         }
       },
       "feed_in_tariff": {
         "title": "Einspeisevergütung",
-        "description": "Konfiguriere die Quelle der Einspeisevergütung.",
+        "description": "Konfiguriere den Vergütungssatz für ins Netz eingespeisten Strom.",
         "data": {
           "feed_in_tariff_value": "Einspeisevergütung",
           "feed_in_tariff_entity": "Einspeisevergütung-Entität"
+        },
+        "data_description": {
+          "feed_in_tariff_value": "Deine Einspeisevergütung in ct/kWh. Zu finden im Energieliefervertrag oder der Bestätigung des Netzbetreibers.",
+          "feed_in_tariff_entity": "Sensor, der die aktuelle Einspeisevergütung in ct/kWh liefert. Für genaue Stundenberechnungen sollte dieser Sensor Langzeitstatistiken aktiviert haben."
         }
       },
       "electricity_price": {
         "title": "Strompreis",
-        "description": "Konfiguriere die Quelle des Strompreises. {statistics_note}",
+        "description": "Konfiguriere den Preis für Strom aus dem Netz. Dieser wird verwendet, um die Ersparnis durch Eigenverbrauch zu berechnen. {statistics_note}",
         "data": {
           "electricity_price_value": "Strompreis",
           "electricity_price_entity": "Strompreis-Entität"
+        },
+        "data_description": {
+          "electricity_price_value": "Dein Arbeitspreis für Netzstrom in ct/kWh. Fixkosten wie Grundgebühren werden nicht berücksichtigt.",
+          "electricity_price_entity": "Sensor, der den aktuellen Strompreis in ct/kWh liefert. Für genaue Stundenberechnungen sollte dieser Sensor Langzeitstatistiken aktiviert haben."
         }
       }
     },
@@ -49,40 +72,65 @@
   "options": {
     "step": {
       "init": {
-        "title": "PV Economics Optionen",
-        "description": "Bearbeite Wirtschaftlichkeit, Quell-Entitäten und Aktualisierungsintervall.",
+        "title": "Installationskosten",
+        "description": "Bearbeite die finanziellen Eckdaten deiner PV-Anlage.",
         "data": {
           "installation_cost": "Installationskosten",
           "commissioning_date": "Inbetriebnahmedatum",
-          "historical_offset": "Historischer Offset",
+          "historical_offset": "Historischer Ertrag"
+        },
+        "data_description": {
+          "installation_cost": "Gesamtkosten der PV-Anlage inklusive Hardware, Installation und sonstiger Einmalkosten.",
+          "commissioning_date": "Das Datum, an dem deine PV-Anlage erstmals in Betrieb genommen wurde.",
+          "historical_offset": "Bereits erzielte Einnahmen vor Einrichtung dieser Integration. Auf 0 lassen, wenn nicht zutreffend."
+        }
+      },
+      "entities": {
+        "title": "Energiesensoren & Preise",
+        "description": "Bearbeite Sensoren, Preismodi und Update-Einstellungen.",
+        "data": {
+          "pv_production_entity": "PV-Erzeugung",
+          "grid_export_entity": "Netzeinspeisung",
+          "grid_import_entity": "Netzbezug",
           "feed_in_tariff_mode": "Einspeisevergütung-Modus",
           "electricity_price_mode": "Strompreis-Modus",
-          "pv_production_entity": "PV-Erzeugungsentität",
-          "grid_export_entity": "Netzeinspeisungsentität",
-          "grid_import_entity": "Netzbezugsentität",
-          "min_history_days": "Mindest-Historie in Tagen",
-          "rolling_window_days": "Rollierendes Fenster in Tagen",
+          "min_history_days": "Mindest-Historie",
+          "rolling_window_days": "Prognosefenster",
           "update_interval_minutes": "Aktualisierungsintervall"
         },
         "data_description": {
-          "commissioning_date": "Das Datum, an dem die PV-Anlage erstmals in Betrieb genommen wurde.",
-          "historical_offset": "Gesamtertrag vor der Einrichtung dieser Integration."
+          "pv_production_entity": "Sensor für die gesamte erzeugte Energie (kWh, total_increasing).",
+          "grid_export_entity": "Sensor für die gesamte Netzeinspeisung (kWh, total_increasing).",
+          "grid_import_entity": "Optional. Nur für den Autarkiegrad-Sensor erforderlich.",
+          "feed_in_tariff_mode": "Fest: fixer Wert in ct/kWh. Entität: Sensor-basierter Tarif.",
+          "electricity_price_mode": "Fest: fixer Preis in ct/kWh. Entität: Sensor-basierter Preis.",
+          "min_history_days": "Mindesttage seit Inbetriebnahme vor einer Amortisationsprognose. Standard: 60.",
+          "rolling_window_days": "Jüngste Tage für die Amortisationsprognose. Standard: 365.",
+          "update_interval_minutes": "Wie oft alle Werte neu berechnet werden. Niedrigere Werte erhöhen die Recorder-Last."
         }
       },
       "feed_in_tariff": {
         "title": "Einspeisevergütung",
-        "description": "Bearbeite die Quelle der Einspeisevergütung.",
+        "description": "Bearbeite den Vergütungssatz für ins Netz eingespeisten Strom.",
         "data": {
           "feed_in_tariff_value": "Einspeisevergütung",
           "feed_in_tariff_entity": "Einspeisevergütung-Entität"
+        },
+        "data_description": {
+          "feed_in_tariff_value": "Deine Einspeisevergütung in ct/kWh.",
+          "feed_in_tariff_entity": "Sensor mit der aktuellen Einspeisevergütung in ct/kWh. Sollte Langzeitstatistiken aktiviert haben."
         }
       },
       "electricity_price": {
         "title": "Strompreis",
-        "description": "Bearbeite die Quelle des Strompreises. {statistics_note}",
+        "description": "Bearbeite den Preis für Strom aus dem Netz. {statistics_note}",
         "data": {
           "electricity_price_value": "Strompreis",
           "electricity_price_entity": "Strompreis-Entität"
+        },
+        "data_description": {
+          "electricity_price_value": "Dein Arbeitspreis für Netzstrom in ct/kWh.",
+          "electricity_price_entity": "Sensor mit dem aktuellen Strompreis in ct/kWh. Sollte Langzeitstatistiken aktiviert haben."
         }
       }
     }
