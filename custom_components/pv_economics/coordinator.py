@@ -478,6 +478,21 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             (sc_sufficiency_live * 100.0) if sc_sufficiency_live is not None else 0.0,
             imp_total_kwh, live_imp_kwh,
         )
+        if has_battery:
+            bat_charge_kwh = sum(kwh for _, kwh in bat_charge_hourly)
+            bat_discharge_kwh = sum(kwh for _, kwh in bat_discharge_hourly)
+            sc_for_savings_kwh = sum(kwh for _, kwh in sc_for_savings)
+            _LOGGER.debug("PV Economics | Battery (stats)")
+            _LOGGER.debug(
+                "  Charge      %.3f kWh  Discharge %.3f kWh",
+                bat_charge_kwh, bat_discharge_kwh,
+            )
+            _LOGGER.debug(
+                "  SC for savings %.3f kWh  (= self-cons %.3f - charge %.3f)",
+                sc_for_savings_kwh,
+                sum(kwh for _, kwh in sc_hourly),
+                bat_charge_kwh,
+            )
 
         price_desc = self._price_description(price_mode, price_entity, price_fallback, cfg)
         tariff_desc = self._price_description(tariff_mode, tariff_entity, tariff_fallback, cfg, is_tariff=True)
@@ -488,6 +503,13 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "  Savings     stats %.2f + hist %.2f + live %.2f = %.2f EUR",
             savings_eur, historical_savings_eur, live_savings_eur, savings_all_live,
         )
+        if has_battery:
+            sc_savings_eur = calculate_savings(hourly_savings)
+            bat_discharge_savings_eur = calculate_savings(hourly_bat_discharge_savings)
+            _LOGGER.debug(
+                "    SC savings %.2f EUR  + bat discharge %.2f EUR",
+                sc_savings_eur, bat_discharge_savings_eur,
+            )
         _LOGGER.debug(
             "  Feed-in     stats %.2f + hist %.2f + live %.2f = %.2f EUR",
             feed_in_eur, historical_feed_in_eur, live_feed_in_eur, feed_in_all_live,
