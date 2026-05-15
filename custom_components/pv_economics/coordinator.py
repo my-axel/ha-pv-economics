@@ -12,7 +12,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .calculations import (
+    aggregate_daily,
     aggregate_daily_yields,
+    aggregate_period_yields,
     calculate_amortization_date,
     calculate_amortization_progress_pct,
     calculate_average_daily_yield,
@@ -64,6 +66,18 @@ from .const import (
     VALUE_SYSTEM_AGE_DAYS,
     VALUE_TOTAL_SAVINGS,
     VALUE_TOTAL_YIELD,
+    VALUE_FEED_IN_THIS_MONTH,
+    VALUE_FEED_IN_THIS_WEEK,
+    VALUE_FEED_IN_THIS_YEAR,
+    VALUE_FEED_IN_TODAY,
+    VALUE_SAVINGS_THIS_MONTH,
+    VALUE_SAVINGS_THIS_WEEK,
+    VALUE_SAVINGS_THIS_YEAR,
+    VALUE_SAVINGS_TODAY,
+    VALUE_YIELD_THIS_MONTH,
+    VALUE_YIELD_THIS_WEEK,
+    VALUE_YIELD_THIS_YEAR,
+    VALUE_YIELD_TODAY,
 )
 from .statistics import async_get_hourly_statistics, async_has_statistics
 
@@ -71,6 +85,13 @@ _LOGGER = logging.getLogger(__name__)
 
 _PRICE_FALLBACK_KEY = "_price_fallback"
 _TARIFF_FALLBACK_KEY = "_tariff_fallback"
+_SAVINGS_FROM_STATS_KEY = "_savings_from_statistics"
+_FEED_IN_FROM_STATS_KEY = "_feed_in_from_statistics"
+_HIST_SAVINGS_KEY = "_historical_savings"
+_HIST_FEED_IN_KEY = "_historical_feed_in"
+_STATS_FIRST_DATE_KEY = "_statistics_first_date"
+_STATS_LAST_DATE_KEY = "_statistics_last_date"
+_STATS_HOURS_KEY = "_statistics_hours"
 
 
 class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -213,6 +234,9 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         daily_yields = aggregate_daily_yields(hourly_savings, hourly_feed_in)
         today = date.today()
         system_age_days = (today - commissioning_date).days
+        period_yields = aggregate_period_yields(daily_yields, today)
+        period_savings = aggregate_period_yields(aggregate_daily(hourly_savings), today)
+        period_feed_in = aggregate_period_yields(aggregate_daily(hourly_feed_in), today)
 
         amort_date = calculate_amortization_date(
             daily_yields,
@@ -230,6 +254,28 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         days_to_amort: int | None = None
         if amort_date is not None:
             days_to_amort = max(0, (amort_date - today).days)
+
+        stats_first = sc_hourly[0][0].date() if sc_hourly else None
+        stats_last = sc_hourly[-1][0].date() if sc_hourly else None
+        _LOGGER.debug(
+            "PV Economics update: statistics %s..%s (%d hours), "
+            "savings stats=%.2f + hist=%.2f = %.2f, "
+            "feed_in stats=%.2f + hist=%.2f = %.2f, "
+            "yield today=%.2f week=%.2f month=%.2f year=%.2f",
+            stats_first,
+            stats_last,
+            len(sc_hourly),
+            savings_eur,
+            historical_savings_eur,
+            savings_all,
+            feed_in_eur,
+            historical_feed_in_eur,
+            feed_in_all,
+            period_yields["today"],
+            period_yields["this_week"],
+            period_yields["this_month"],
+            period_yields["this_year"],
+        )
 
         return {
             VALUE_SELF_CONSUMPTION: round(sc_total, 3),
@@ -253,8 +299,27 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 round(avg_daily, 2) if avg_daily is not None else None
             ),
             VALUE_IS_AMORTIZED: total_yield >= installation_cost,
+            VALUE_YIELD_TODAY: round(period_yields["today"], 2),
+            VALUE_YIELD_THIS_WEEK: round(period_yields["this_week"], 2),
+            VALUE_YIELD_THIS_MONTH: round(period_yields["this_month"], 2),
+            VALUE_YIELD_THIS_YEAR: round(period_yields["this_year"], 2),
+            VALUE_SAVINGS_TODAY: round(period_savings["today"], 2),
+            VALUE_SAVINGS_THIS_WEEK: round(period_savings["this_week"], 2),
+            VALUE_SAVINGS_THIS_MONTH: round(period_savings["this_month"], 2),
+            VALUE_SAVINGS_THIS_YEAR: round(period_savings["this_year"], 2),
+            VALUE_FEED_IN_TODAY: round(period_feed_in["today"], 2),
+            VALUE_FEED_IN_THIS_WEEK: round(period_feed_in["this_week"], 2),
+            VALUE_FEED_IN_THIS_MONTH: round(period_feed_in["this_month"], 2),
+            VALUE_FEED_IN_THIS_YEAR: round(period_feed_in["this_year"], 2),
             _PRICE_FALLBACK_KEY: price_fallback,
             _TARIFF_FALLBACK_KEY: tariff_fallback,
+            _SAVINGS_FROM_STATS_KEY: round(savings_eur, 2),
+            _FEED_IN_FROM_STATS_KEY: round(feed_in_eur, 2),
+            _HIST_SAVINGS_KEY: round(historical_savings_eur, 2),
+            _HIST_FEED_IN_KEY: round(historical_feed_in_eur, 2),
+            _STATS_FIRST_DATE_KEY: stats_first,
+            _STATS_LAST_DATE_KEY: stats_last,
+            _STATS_HOURS_KEY: len(sc_hourly),
         }
 
     def _compute_savings(

@@ -196,6 +196,42 @@
       },
       "system_age_days": {
         "name": "System age"
+      },
+      "yield_today": {
+        "name": "Yield today"
+      },
+      "yield_this_week": {
+        "name": "Yield this week"
+      },
+      "yield_this_month": {
+        "name": "Yield this month"
+      },
+      "yield_this_year": {
+        "name": "Yield this year"
+      },
+      "savings_today": {
+        "name": "Savings today"
+      },
+      "savings_this_week": {
+        "name": "Savings this week"
+      },
+      "savings_this_month": {
+        "name": "Savings this month"
+      },
+      "savings_this_year": {
+        "name": "Savings this year"
+      },
+      "feed_in_today": {
+        "name": "Feed-in revenue today"
+      },
+      "feed_in_this_week": {
+        "name": "Feed-in revenue this week"
+      },
+      "feed_in_this_month": {
+        "name": "Feed-in revenue this month"
+      },
+      "feed_in_this_year": {
+        "name": "Feed-in revenue this year"
       }
     },
     "binary_sensor": {

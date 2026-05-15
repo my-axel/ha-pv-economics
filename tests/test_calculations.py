@@ -7,7 +7,9 @@ from datetime import date, datetime, timezone
 import pytest
 
 from custom_components.pv_economics.calculations import (
+    aggregate_daily,
     aggregate_daily_yields,
+    aggregate_period_yields,
     calculate_amortization_date,
     calculate_amortization_progress_pct,
     calculate_feed_in_revenue,
@@ -251,6 +253,131 @@ def test_aggregate_daily_yields_sorted() -> None:
     day1 = datetime(2024, 6, 1, 10, tzinfo=UTC)
     result = aggregate_daily_yields([(day2, 1.0), (day1, 2.0)], [])
     assert result[0][0] < result[1][0]
+
+
+# ---------------------------------------------------------------------------
+# aggregate_daily
+# ---------------------------------------------------------------------------
+
+
+def test_aggregate_daily_single_hour() -> None:
+    result = aggregate_daily([(_ts(10), 1.5)])
+    assert result == [(date(2024, 6, 1), pytest.approx(1.5))]
+
+
+def test_aggregate_daily_multiple_hours_same_day() -> None:
+    hourly = [(_ts(8), 1.0), (_ts(12), 2.0), (_ts(18), 0.5)]
+    result = aggregate_daily(hourly)
+    assert len(result) == 1
+    assert result[0][1] == pytest.approx(3.5)
+
+
+def test_aggregate_daily_multiple_days() -> None:
+    day2_ts = datetime(2024, 6, 2, 10, tzinfo=UTC)
+    result = aggregate_daily([(_ts(10), 1.0), (day2_ts, 2.0)])
+    assert result[0] == (date(2024, 6, 1), pytest.approx(1.0))
+    assert result[1] == (date(2024, 6, 2), pytest.approx(2.0))
+
+
+def test_aggregate_daily_empty() -> None:
+    assert aggregate_daily([]) == []
+
+
+def test_aggregate_daily_yields_equals_combined_aggregate_daily() -> None:
+    day2_ts = datetime(2024, 6, 2, 10, tzinfo=UTC)
+    savings = [(_ts(10), 1.0), (day2_ts, 2.0)]
+    feed_in = [(_ts(10), 0.5), (day2_ts, 0.3)]
+    via_yields = aggregate_daily_yields(savings, feed_in)
+    via_daily = aggregate_daily(savings + feed_in)
+    assert via_yields == via_daily
+
+
+# ---------------------------------------------------------------------------
+# aggregate_period_yields
+# ---------------------------------------------------------------------------
+
+# Reference date: Saturday 2024-06-01, ISO week 22 of ISO year 2024.
+# ISO week 22 runs Mon 2024-05-27 to Sun 2024-06-02.
+_REF_DATE = date(2024, 6, 1)
+
+
+def test_aggregate_period_yields_today() -> None:
+    daily = [(_REF_DATE, 5.0)]
+    result = aggregate_period_yields(daily, _REF_DATE)
+    assert result["today"] == pytest.approx(5.0)
+    assert result["this_week"] == pytest.approx(5.0)
+    assert result["this_month"] == pytest.approx(5.0)
+    assert result["this_year"] == pytest.approx(5.0)
+
+
+def test_aggregate_period_yields_same_week_different_month() -> None:
+    # May 27 is Monday of ISO week 22 – same week as June 1, but different month.
+    daily = [(date(2024, 5, 27), 3.0), (_REF_DATE, 2.0)]
+    result = aggregate_period_yields(daily, _REF_DATE)
+    assert result["today"] == pytest.approx(2.0)
+    assert result["this_week"] == pytest.approx(5.0)   # both days in W22
+    assert result["this_month"] == pytest.approx(2.0)  # only June 1 is in June
+    assert result["this_year"] == pytest.approx(5.0)
+
+
+def test_aggregate_period_yields_same_month_different_week() -> None:
+    daily = [(date(2024, 6, 15), 4.0)]  # week 24, not week 22
+    result = aggregate_period_yields(daily, _REF_DATE)
+    assert result["today"] == 0.0
+    assert result["this_week"] == 0.0
+    assert result["this_month"] == pytest.approx(4.0)
+    assert result["this_year"] == pytest.approx(4.0)
+
+
+def test_aggregate_period_yields_same_year_different_month() -> None:
+    daily = [(date(2024, 3, 10), 7.0)]
+    result = aggregate_period_yields(daily, _REF_DATE)
+    assert result["today"] == 0.0
+    assert result["this_week"] == 0.0
+    assert result["this_month"] == 0.0
+    assert result["this_year"] == pytest.approx(7.0)
+
+
+def test_aggregate_period_yields_different_year() -> None:
+    daily = [(date(2023, 6, 1), 10.0)]
+    result = aggregate_period_yields(daily, _REF_DATE)
+    assert result == {"today": 0.0, "this_week": 0.0, "this_month": 0.0, "this_year": 0.0}
+
+
+def test_aggregate_period_yields_empty() -> None:
+    result = aggregate_period_yields([], _REF_DATE)
+    assert result == {"today": 0.0, "this_week": 0.0, "this_month": 0.0, "this_year": 0.0}
+
+
+def test_aggregate_period_yields_multiple_entries_sum() -> None:
+    # Several days in the same month but different weeks; all count for year+month.
+    daily = [
+        (date(2024, 6, 1), 1.0),   # today, W22
+        (date(2024, 6, 10), 2.0),  # W24
+        (date(2024, 6, 20), 3.0),  # W25
+    ]
+    result = aggregate_period_yields(daily, _REF_DATE)
+    assert result["today"] == pytest.approx(1.0)
+    assert result["this_week"] == pytest.approx(1.0)
+    assert result["this_month"] == pytest.approx(6.0)
+    assert result["this_year"] == pytest.approx(6.0)
+
+
+def test_aggregate_period_yields_iso_week_spans_year_boundary() -> None:
+    # ISO week 1 of 2025 starts Mon Dec 30, 2024.
+    # today = Jan 2, 2025 (Thursday, ISO week 1 of 2025).
+    # Dec 30 is calendar year 2024, so it does NOT count for this_year (2025).
+    today = date(2025, 1, 2)
+    daily = [
+        (date(2024, 12, 30), 5.0),  # ISO W1/2025 but calendar year 2024
+        (date(2025, 1, 2), 3.0),    # today
+    ]
+    result = aggregate_period_yields(daily, today)
+    assert result["today"] == pytest.approx(3.0)
+    # Dec 30 excluded from this_week because calendar year filter runs first
+    assert result["this_week"] == pytest.approx(3.0)
+    assert result["this_month"] == pytest.approx(3.0)
+    assert result["this_year"] == pytest.approx(3.0)
 
 
 # ---------------------------------------------------------------------------

@@ -196,6 +196,42 @@
       },
       "system_age_days": {
         "name": "Anlagenalter"
+      },
+      "yield_today": {
+        "name": "Ertrag heute"
+      },
+      "yield_this_week": {
+        "name": "Ertrag diese Woche"
+      },
+      "yield_this_month": {
+        "name": "Ertrag diesen Monat"
+      },
+      "yield_this_year": {
+        "name": "Ertrag dieses Jahr"
+      },
+      "savings_today": {
+        "name": "Ersparnis heute"
+      },
+      "savings_this_week": {
+        "name": "Ersparnis diese Woche"
+      },
+      "savings_this_month": {
+        "name": "Ersparnis diesen Monat"
+      },
+      "savings_this_year": {
+        "name": "Ersparnis dieses Jahr"
+      },
+      "feed_in_today": {
+        "name": "Einspeiseerlös heute"
+      },
+      "feed_in_this_week": {
+        "name": "Einspeiseerlös diese Woche"
+      },
+      "feed_in_this_month": {
+        "name": "Einspeiseerlös diesen Monat"
+      },
+      "feed_in_this_year": {
+        "name": "Einspeiseerlös dieses Jahr"
       }
     },
     "binary_sensor": {

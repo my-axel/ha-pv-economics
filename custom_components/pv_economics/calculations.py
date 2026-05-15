@@ -135,17 +135,22 @@ def calculate_feed_in_revenue(hourly_feed_in: list[tuple[datetime, float]]) -> f
     return sum(v for _, v in hourly_feed_in)
 
 
+def aggregate_daily(
+    hourly: list[tuple[datetime, float]],
+) -> list[tuple[date, float]]:
+    """Aggregate a single hourly series to (UTC date, total) per day, sorted."""
+    daily: dict[date, float] = defaultdict(float)
+    for ts, v in hourly:
+        daily[ts.date()] += v
+    return sorted(daily.items())
+
+
 def aggregate_daily_yields(
     hourly_savings: list[tuple[datetime, float]],
     hourly_feed_in: list[tuple[datetime, float]],
 ) -> list[tuple[date, float]]:
     """Return (date, yield) per UTC calendar day, sorted chronologically."""
-    daily: dict[date, float] = defaultdict(float)
-    for ts, v in hourly_savings:
-        daily[ts.date()] += v
-    for ts, v in hourly_feed_in:
-        daily[ts.date()] += v
-    return sorted(daily.items())
+    return aggregate_daily(hourly_savings + hourly_feed_in)
 
 
 def calculate_total_yield(
@@ -166,6 +171,39 @@ def calculate_average_daily_yield(
         return None
     window = daily_yields[-rolling_window_days:]
     return sum(y for _, y in window) / len(window)
+
+
+def aggregate_period_yields(
+    daily_yields: list[tuple[date, float]],
+    today: date,
+) -> dict[str, float]:
+    """Return yield sums for today, this week, this month, and this year.
+
+    Uses ISO weeks (Monday–Sunday). daily_yields dates are UTC calendar dates;
+    today should be the local date from the coordinator.
+    """
+    today_iso = today.isocalendar()
+    yield_today = 0.0
+    yield_week = 0.0
+    yield_month = 0.0
+    yield_year = 0.0
+    for day, y in daily_yields:
+        if day.year != today.year:
+            continue
+        yield_year += y
+        if day.month == today.month:
+            yield_month += y
+        day_iso = day.isocalendar()
+        if day_iso.year == today_iso.year and day_iso.week == today_iso.week:
+            yield_week += y
+            if day == today:
+                yield_today += y
+    return {
+        "today": yield_today,
+        "this_week": yield_week,
+        "this_month": yield_month,
+        "this_year": yield_year,
+    }
 
 
 def calculate_amortization_progress_pct(
