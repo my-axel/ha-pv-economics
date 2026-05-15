@@ -190,12 +190,10 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Use only production hours that fall within the SC period so that
         # the denominator covers the same timespan as the numerator.
         prod_in_sc_period = sum(kwh for ts, kwh in prod_deltas if ts in sc_timestamps)
-        sc_rate = calculate_self_consumption_rate(sc_total, prod_in_sc_period)
 
         prod_total_kwh = sum(kwh for _, kwh in prod_deltas)
         exp_total_kwh = sum(kwh for _, kwh in exp_deltas)
 
-        sc_sufficiency: float | None = None
         imp_total_kwh = 0.0
         imp_in_sc_period = 0.0
         if imp_id:
@@ -203,7 +201,6 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             imp_total_kwh = sum(kwh for _, kwh in imp_deltas)
             # Same period constraint: only count import during SC hours.
             imp_in_sc_period = sum(kwh for ts, kwh in imp_deltas if ts in sc_timestamps)
-            sc_sufficiency = calculate_self_sufficiency(sc_total, imp_in_sc_period)
 
         # Savings
         hourly_savings = self._compute_savings(
@@ -232,10 +229,6 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         feed_in_all = feed_in_eur + historical_feed_in_eur
         total_yield = savings_all + feed_in_all
         historical_offset_combined = historical_savings_eur + historical_feed_in_eur
-
-        progress_pct = calculate_amortization_progress_pct(
-            total_yield, installation_cost
-        )
 
         local_tz = dt_util.DEFAULT_TIME_ZONE
         today = dt_util.now().date()
@@ -269,9 +262,13 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         live_exp_kwh = sum(kwh for _, kwh in live_exp_deltas)
 
         live_imp_kwh = 0.0
+        live_imp_in_sc = 0.0
         if imp_id:
             live_imp_deltas = compute_hourly_deltas(live_stats.get(imp_id, []))
             live_imp_kwh = sum(kwh for _, kwh in live_imp_deltas)
+            # Keep the SC-period alignment consistent with the hourly calculation:
+            # only count live import for buckets where live SC is also present.
+            live_imp_in_sc = sum(kwh for ts, kwh in live_imp_deltas if ts in live_sc_timestamps)
 
         # ── Combined kWh (stats + live) ───────────────────────────────────────
         sc_total_live = sc_total + live_sc_kwh
@@ -281,7 +278,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         sc_sufficiency_live: float | None = None
         if imp_id:
             sc_sufficiency_live = calculate_self_sufficiency(
-                sc_total_live, imp_in_sc_period + live_imp_kwh
+                sc_total_live, imp_in_sc_period + live_imp_in_sc
             )
 
         # ── Combined monetary (stats + live) ──────────────────────────────────

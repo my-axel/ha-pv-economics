@@ -186,8 +186,9 @@ def aggregate_period_yields(
 ) -> dict[str, float]:
     """Return yield sums for today, this week, this month, and this year.
 
-    Uses ISO weeks (Monday–Sunday). daily_yields dates are UTC calendar dates;
-    today should be the local date from the coordinator.
+    Uses ISO weeks (Monday–Sunday). daily_yields dates must already be in the
+    local calendar (i.e. produced by aggregate_daily with the local timezone).
+    today must be the local date from the coordinator.
     """
     today_iso = today.isocalendar()
     yield_today = 0.0
