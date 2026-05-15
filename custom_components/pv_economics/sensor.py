@@ -106,7 +106,7 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_TOTAL_SAVINGS,
         value_key=VALUE_TOTAL_SAVINGS,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL,
         unit_fn=_currency_unit,
         fallback_attr_key=_PRICE_FALLBACK_KEY,
         diagnostic_attr_keys={
@@ -119,7 +119,7 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_FEED_IN_REVENUE,
         value_key=VALUE_FEED_IN_REVENUE,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL,
         unit_fn=_currency_unit,
         fallback_attr_key=_TARIFF_FALLBACK_KEY,
         diagnostic_attr_keys={
@@ -132,7 +132,7 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_TOTAL_YIELD,
         value_key=VALUE_TOTAL_YIELD,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL,
         unit_fn=_currency_unit,
         diagnostic_attr_keys={
             _STATS_FIRST_DATE_KEY: "statistics_from",
@@ -145,7 +145,7 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_NET_YIELD,
         value_key=VALUE_NET_YIELD,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
@@ -174,7 +174,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_AVERAGE_DAILY_YIELD,
         value_key=VALUE_AVERAGE_DAILY_YIELD,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
@@ -190,7 +189,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_YIELD_TODAY,
         value_key=VALUE_YIELD_TODAY,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
@@ -198,7 +196,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_YIELD_THIS_WEEK,
         value_key=VALUE_YIELD_THIS_WEEK,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
@@ -206,7 +203,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_YIELD_THIS_MONTH,
         value_key=VALUE_YIELD_THIS_MONTH,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
@@ -214,7 +210,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_YIELD_THIS_YEAR,
         value_key=VALUE_YIELD_THIS_YEAR,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
@@ -222,7 +217,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_SAVINGS_TODAY,
         value_key=VALUE_SAVINGS_TODAY,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
@@ -230,7 +224,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_SAVINGS_THIS_WEEK,
         value_key=VALUE_SAVINGS_THIS_WEEK,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
@@ -238,7 +231,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_SAVINGS_THIS_MONTH,
         value_key=VALUE_SAVINGS_THIS_MONTH,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
@@ -246,7 +238,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_SAVINGS_THIS_YEAR,
         value_key=VALUE_SAVINGS_THIS_YEAR,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
@@ -254,7 +245,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_FEED_IN_TODAY,
         value_key=VALUE_FEED_IN_TODAY,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
@@ -262,7 +252,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_FEED_IN_THIS_WEEK,
         value_key=VALUE_FEED_IN_THIS_WEEK,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
@@ -270,7 +259,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_FEED_IN_THIS_MONTH,
         value_key=VALUE_FEED_IN_THIS_MONTH,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
@@ -278,7 +266,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_FEED_IN_THIS_YEAR,
         value_key=VALUE_FEED_IN_THIS_YEAR,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
 )
