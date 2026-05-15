@@ -173,7 +173,11 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         key=VALUE_AVERAGE_DAILY_YIELD,
         translation_key=VALUE_AVERAGE_DAILY_YIELD,
         value_key=VALUE_AVERAGE_DAILY_YIELD,
-        device_class=SensorDeviceClass.MONETARY,
+        # No device_class=MONETARY: MONETARY only allows state_class=TOTAL or None,
+        # but a rolling average is not a cumulative total. Using MEASUREMENT without
+        # device_class lets HA track statistics while the unit_fn still provides the
+        # currency unit for correct display.
+        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
