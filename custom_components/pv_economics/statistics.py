@@ -10,6 +10,7 @@ from homeassistant.components.recorder.statistics import (
     list_statistic_ids,
     statistics_during_period,
 )
+from homeassistant.const import UnitOfEnergy
 from homeassistant.core import HomeAssistant
 
 
@@ -33,7 +34,7 @@ async def async_get_hourly_statistics(
         end,
         set(statistic_ids),
         "hour",
-        None,
+        {"energy": UnitOfEnergy.KILO_WATT_HOUR},
         {"sum", "mean"},
     )
     return {
