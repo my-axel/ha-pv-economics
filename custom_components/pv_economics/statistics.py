@@ -14,15 +14,16 @@ from homeassistant.const import UnitOfEnergy
 from homeassistant.core import HomeAssistant
 
 
-async def async_get_hourly_statistics(
+async def async_get_statistics(
     hass: HomeAssistant,
     statistic_ids: list[str],
     start: datetime,
     end: datetime,
+    period: str = "hour",
 ) -> dict[str, list[dict[str, Any]]]:
-    """Fetch hourly long-term statistics for the requested statistic IDs.
+    """Fetch statistics for the requested statistic IDs.
 
-    Returns a dict mapping statistic ID to a list of hourly buckets.
+    Returns a dict mapping statistic ID to a list of buckets.
     Each bucket is a plain dict with keys: start (datetime), sum (float|None),
     mean (float|None).
     """
@@ -33,7 +34,7 @@ async def async_get_hourly_statistics(
         start,
         end,
         set(statistic_ids),
-        "hour",
+        period,
         {"energy": UnitOfEnergy.KILO_WATT_HOUR},
         {"sum", "mean"},
     )
@@ -48,6 +49,16 @@ async def async_get_hourly_statistics(
         ]
         for stat_id, rows in raw.items()
     }
+
+
+async def async_get_hourly_statistics(
+    hass: HomeAssistant,
+    statistic_ids: list[str],
+    start: datetime,
+    end: datetime,
+) -> dict[str, list[dict[str, Any]]]:
+    """Fetch hourly statistics. Alias for async_get_statistics with period='hour'."""
+    return await async_get_statistics(hass, statistic_ids, start, end, period="hour")
 
 
 async def async_has_statistics(

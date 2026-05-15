@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -281,6 +281,26 @@ def test_aggregate_daily_multiple_days() -> None:
 
 def test_aggregate_daily_empty() -> None:
     assert aggregate_daily([]) == []
+
+
+def test_aggregate_daily_timezone_shifts_day_boundary() -> None:
+    # 23:30 UTC on June 1 = 01:30 local time on June 2 in UTC+2.
+    # With tz=UTC+2 the value must land on June 2, not June 1.
+    tz_plus2 = timezone(timedelta(hours=2))
+    ts_utc = datetime(2024, 6, 1, 23, 30, tzinfo=UTC)
+    result_utc = aggregate_daily([(ts_utc, 1.0)])
+    result_local = aggregate_daily([(ts_utc, 1.0)], tz=tz_plus2)
+    assert result_utc == [(date(2024, 6, 1), pytest.approx(1.0))]
+    assert result_local == [(date(2024, 6, 2), pytest.approx(1.0))]
+
+
+def test_aggregate_daily_timezone_no_shift_during_day() -> None:
+    # 12:00 UTC = 14:00 UTC+2 — same calendar day in both timezones.
+    tz_plus2 = timezone(timedelta(hours=2))
+    ts_utc = datetime(2024, 6, 1, 12, 0, tzinfo=UTC)
+    assert aggregate_daily([(ts_utc, 1.0)], tz=tz_plus2) == [
+        (date(2024, 6, 1), pytest.approx(1.0))
+    ]
 
 
 def test_aggregate_daily_yields_equals_combined_aggregate_daily() -> None:

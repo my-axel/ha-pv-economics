@@ -7,7 +7,7 @@ hourly energy, price correlation, yield, and amortization logic.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, tzinfo
 from math import ceil
 from typing import Any
 
@@ -137,20 +137,27 @@ def calculate_feed_in_revenue(hourly_feed_in: list[tuple[datetime, float]]) -> f
 
 def aggregate_daily(
     hourly: list[tuple[datetime, float]],
+    tz: tzinfo | None = None,
 ) -> list[tuple[date, float]]:
-    """Aggregate a single hourly series to (UTC date, total) per day, sorted."""
+    """Aggregate a single hourly series to (local date, total) per day, sorted.
+
+    When tz is provided, timestamps are converted to that timezone before
+    extracting the date so that the day boundary matches the local calendar.
+    """
     daily: dict[date, float] = defaultdict(float)
     for ts, v in hourly:
-        daily[ts.date()] += v
+        local_ts = ts.astimezone(tz) if tz is not None else ts
+        daily[local_ts.date()] += v
     return sorted(daily.items())
 
 
 def aggregate_daily_yields(
     hourly_savings: list[tuple[datetime, float]],
     hourly_feed_in: list[tuple[datetime, float]],
+    tz: tzinfo | None = None,
 ) -> list[tuple[date, float]]:
-    """Return (date, yield) per UTC calendar day, sorted chronologically."""
-    return aggregate_daily(hourly_savings + hourly_feed_in)
+    """Return (local date, yield) per calendar day, sorted chronologically."""
+    return aggregate_daily(hourly_savings + hourly_feed_in, tz)
 
 
 def calculate_total_yield(

@@ -79,7 +79,7 @@ from .const import (
     VALUE_YIELD_THIS_YEAR,
     VALUE_YIELD_TODAY,
 )
-from .statistics import async_get_hourly_statistics, async_has_statistics
+from .statistics import async_get_statistics, async_has_statistics
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -178,7 +178,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             else:
                 statistic_ids.append(tariff_entity)
 
-        stats = await async_get_hourly_statistics(self.hass, statistic_ids, start, end)
+        stats = await async_get_statistics(self.hass, statistic_ids, start, end, period="hour")
 
         prod_deltas = compute_hourly_deltas(stats.get(prod_id, []))
         exp_deltas = compute_hourly_deltas(stats.get(exp_id, []))
@@ -231,12 +231,50 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             total_yield, installation_cost
         )
 
-        daily_yields = aggregate_daily_yields(hourly_savings, hourly_feed_in)
-        today = date.today()
+        local_tz = dt_util.DEFAULT_TIME_ZONE
+        today = dt_util.now().date()
         system_age_days = (today - commissioning_date).days
+
+        # Live supplement: 5-min stats for the period not yet covered by hourly stats.
+        # Hourly stats cover up to the end of the last complete hour; the 5-min
+        # stats pick up from there to ~5 minutes ago, so the two windows never
+        # overlap and there is no double-counting.
+        prod_stats_raw = stats.get(prod_id, [])
+        if prod_stats_raw:
+            live_start = prod_stats_raw[-1]["start"] + timedelta(hours=1)
+        else:
+            live_start = dt_util.start_of_local_day()
+
+        live_stats = await async_get_statistics(
+            self.hass, [prod_id, exp_id], live_start, end, period="5minute"
+        )
+        live_prod_deltas = compute_hourly_deltas(live_stats.get(prod_id, []))
+        live_exp_deltas = compute_hourly_deltas(live_stats.get(exp_id, []))
+        live_sc = calculate_hourly_self_consumption(live_prod_deltas, live_exp_deltas)
+
+        live_savings_eur = self._compute_live_savings_eur(
+            live_sc, cfg, price_mode, price_entity
+        )
+        live_feed_in_eur = self._compute_live_feed_in_eur(
+            live_exp_deltas, cfg, tariff_mode, tariff_entity
+        )
+        live_yield_eur = live_savings_eur + live_feed_in_eur
+
+        daily_yields = aggregate_daily_yields(hourly_savings, hourly_feed_in, local_tz)
         period_yields = aggregate_period_yields(daily_yields, today)
-        period_savings = aggregate_period_yields(aggregate_daily(hourly_savings), today)
-        period_feed_in = aggregate_period_yields(aggregate_daily(hourly_feed_in), today)
+        period_savings = aggregate_period_yields(
+            aggregate_daily(hourly_savings, local_tz), today
+        )
+        period_feed_in = aggregate_period_yields(
+            aggregate_daily(hourly_feed_in, local_tz), today
+        )
+
+        # Add the live (current-hour) supplement to all period buckets that
+        # include today — today is always inside this_week / this_month / this_year.
+        for period in ("today", "this_week", "this_month", "this_year"):
+            period_yields[period] += live_yield_eur
+            period_savings[period] += live_savings_eur
+            period_feed_in[period] += live_feed_in_eur
 
         amort_date = calculate_amortization_date(
             daily_yields,
@@ -261,7 +299,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "PV Economics update: statistics %s..%s (%d hours), "
             "savings stats=%.2f + hist=%.2f = %.2f, "
             "feed_in stats=%.2f + hist=%.2f = %.2f, "
-            "yield today=%.2f week=%.2f month=%.2f year=%.2f",
+            "yield today=%.2f (live+%.2f) week=%.2f month=%.2f year=%.2f",
             stats_first,
             stats_last,
             len(sc_hourly),
@@ -272,6 +310,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             historical_feed_in_eur,
             feed_in_all,
             period_yields["today"],
+            live_yield_eur,
             period_yields["this_week"],
             period_yields["this_month"],
             period_yields["this_year"],
@@ -321,6 +360,63 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _STATS_LAST_DATE_KEY: stats_last,
             _STATS_HOURS_KEY: len(sc_hourly),
         }
+
+    def _compute_live_savings_eur(
+        self,
+        sc_deltas: list[tuple[datetime, float]],
+        cfg: dict[str, Any],
+        price_mode: str,
+        price_entity: str | None,
+    ) -> float:
+        """Return savings for the live (current-hour) period using the current price.
+
+        For dynamic prices (e.g. 15-min resolution) we always read the entity's
+        current state so the latest price is applied immediately on each coordinator
+        refresh, without waiting for hourly statistics to be compiled.
+        """
+        if not sc_deltas:
+            return 0.0
+        total_sc_kwh = sum(kwh for _, kwh in sc_deltas)
+        if price_mode != TARIFF_MODE_ENTITY:
+            price_ct = float(cfg[CONF_ELECTRICITY_PRICE_VALUE])
+            return total_sc_kwh * price_ct / 100.0
+        if not price_entity:
+            return 0.0
+        state = self.hass.states.get(price_entity)
+        if not state or state.state in ("unknown", "unavailable"):
+            return 0.0
+        try:
+            factor = self._unit_to_ct_factor(price_entity)
+            price_ct = float(state.state) * factor
+            return total_sc_kwh * price_ct / 100.0
+        except ValueError:
+            return 0.0
+
+    def _compute_live_feed_in_eur(
+        self,
+        exp_deltas: list[tuple[datetime, float]],
+        cfg: dict[str, Any],
+        tariff_mode: str,
+        tariff_entity: str | None,
+    ) -> float:
+        """Return feed-in revenue for the live (current-hour) period using the current tariff."""
+        if not exp_deltas:
+            return 0.0
+        total_exp_kwh = sum(kwh for _, kwh in exp_deltas)
+        if tariff_mode != TARIFF_MODE_ENTITY:
+            tariff_ct = float(cfg[CONF_FEED_IN_TARIFF_VALUE])
+            return total_exp_kwh * tariff_ct / 100.0
+        if not tariff_entity:
+            return 0.0
+        state = self.hass.states.get(tariff_entity)
+        if not state or state.state in ("unknown", "unavailable"):
+            return 0.0
+        try:
+            factor = self._unit_to_ct_factor(tariff_entity)
+            tariff_ct = float(state.state) * factor
+            return total_exp_kwh * tariff_ct / 100.0
+        except ValueError:
+            return 0.0
 
     def _unit_to_ct_factor(self, entity_id: str) -> float:
         """Return factor to normalize an entity's price/tariff value to ct/kWh.
