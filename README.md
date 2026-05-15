@@ -28,6 +28,8 @@ Home Assistant integration that calculates the financial performance of a PV ins
 
 **Attributes on projection sensors** (`amortization_date`, `days_to_amortization`, `average_daily_yield`): `data_days` shows how many days of statistics the calculation is based on. `amortization_date` also exposes `time_left` (e.g. `"12y 5m 3d"`).
 
+**`total_yield` also exposes `monthly_yields`**: a list of `{"month": "YYYY-MM", "yield": <EUR>}` entries for the last 13 months (including the current incomplete month), ready to use as a data source for graph cards.
+
 Out of scope: surplus management, device control, production forecasting, battery correction.
 
 ## Requirements
@@ -70,6 +72,61 @@ total_yield     = total_savings + feed_in_revenue
 ```
 
 Period and projection sensors include a live supplement from 5-minute statistics, so values stay current within the last few minutes rather than waiting for the next full hour to be compiled.
+
+## Example Dashboard
+
+The following Lovelace YAML gives a compact amortization overview. It requires [apexcharts-card](https://github.com/RomRider/apexcharts-card) (available via HACS). Replace `pv_economics` entity IDs with your actual entity IDs if you renamed the integration entry.
+
+```yaml
+type: vertical-stack
+cards:
+  # ── Progress gauge ────────────────────────────────────────────────────────
+  - type: gauge
+    entity: sensor.pv_economics_amortization_progress
+    name: Amortisation
+    min: 0
+    max: 100
+    needle: true
+    severity:
+      green: 75
+      yellow: 40
+      red: 0
+
+  # ── Key metrics ───────────────────────────────────────────────────────────
+  - type: entities
+    entities:
+      - entity: sensor.pv_economics_total_yield
+        name: Gesamtertrag
+      - entity: sensor.pv_economics_net_yield
+        name: Nettoertrag
+      - entity: sensor.pv_economics_amortization_date
+        name: Amortisationsdatum
+      - entity: sensor.pv_economics_days_to_amortization
+        name: Noch
+      - entity: sensor.pv_economics_average_daily_yield
+        name: Ø Tagesertrag
+
+  # ── Monthly yield bar chart ───────────────────────────────────────────────
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: Monatliche Erträge
+    chart_type: bar
+    apex_config:
+      xaxis:
+        type: datetime
+        labels:
+          format: MMM yy
+    series:
+      - entity: sensor.pv_economics_total_yield
+        name: Ertrag
+        color: var(--energy-solar-color, "#FF9800")
+        data_generator: |
+          return entity.attributes.monthly_yields.map(m => {
+            const [y, mo] = m.month.split('-').map(Number);
+            return [new Date(y, mo - 1, 1).getTime(), m.yield];
+          });
+```
 
 ## Development
 

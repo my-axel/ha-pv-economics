@@ -14,6 +14,7 @@ from homeassistant.util import dt as dt_util
 from .calculations import (
     aggregate_daily,
     aggregate_daily_yields,
+    aggregate_monthly_yields,
     aggregate_period_yields,
     calculate_amortization_date,
     calculate_amortization_progress_pct,
@@ -93,6 +94,7 @@ _STATS_LAST_DATE_KEY = "_statistics_last_date"
 _STATS_HOURS_KEY = "_statistics_hours"
 _DATA_DAYS_KEY = "_data_days"
 _AMORT_TIME_LEFT_KEY = "_amort_time_left"
+_MONTHLY_YIELDS_KEY = "_monthly_yields"
 
 
 class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -296,6 +298,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
         daily_yields = aggregate_daily_yields(hourly_savings, hourly_feed_in, local_tz)
+        monthly_yields = aggregate_monthly_yields(daily_yields)
         period_yields = aggregate_period_yields(daily_yields, today)
         period_savings = aggregate_period_yields(
             aggregate_daily(hourly_savings, local_tz), today
@@ -434,6 +437,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _STATS_HOURS_KEY: len(sc_hourly),
             _DATA_DAYS_KEY: len(daily_yields),
             _AMORT_TIME_LEFT_KEY: format_time_until(amort_date, today) if amort_date else None,
+            _MONTHLY_YIELDS_KEY: monthly_yields,
         }
 
     def _compute_live_savings_eur(

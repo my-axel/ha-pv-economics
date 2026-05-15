@@ -54,6 +54,7 @@ from .coordinator import (
     _FEED_IN_FROM_STATS_KEY,
     _HIST_FEED_IN_KEY,
     _HIST_SAVINGS_KEY,
+    _MONTHLY_YIELDS_KEY,
     _PRICE_FALLBACK_KEY,
     _SAVINGS_FROM_STATS_KEY,
     _STATS_FIRST_DATE_KEY,
@@ -140,6 +141,7 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
             _STATS_FIRST_DATE_KEY: "statistics_from",
             _STATS_LAST_DATE_KEY: "statistics_until",
             _STATS_HOURS_KEY: "data_hours",
+            _MONTHLY_YIELDS_KEY: "monthly_yields",
         },
     ),
     PVEconomicsSensorEntityDescription(

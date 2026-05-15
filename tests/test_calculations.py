@@ -9,6 +9,7 @@ import pytest
 from custom_components.pv_economics.calculations import (
     aggregate_daily,
     aggregate_daily_yields,
+    aggregate_monthly_yields,
     aggregate_period_yields,
     calculate_amortization_date,
     calculate_amortization_progress_pct,
@@ -561,14 +562,69 @@ def test_format_time_until_exact_months() -> None:
 
 
 def test_format_time_until_day_borrow() -> None:
-    # target day < today day → borrows from month before target (April = 30 days)
-    # days = 10 - 31 = -21, borrow April's 30 days → 9 remaining days
+    # March 31 + 1 month = April 30 (clamped), April 30 + 10 days = May 10
     today = date(2024, 3, 31)
     target = date(2024, 5, 10)
-    assert format_time_until(target, today) == "1m 9d"
+    assert format_time_until(target, today) == "1m 10d"
 
 
 def test_format_time_until_not_future_returns_none() -> None:
     today = date(2024, 6, 1)
     assert format_time_until(today, today) is None
     assert format_time_until(date(2024, 5, 31), today) is None
+
+
+# ---------------------------------------------------------------------------
+# aggregate_monthly_yields
+# ---------------------------------------------------------------------------
+
+
+def test_aggregate_monthly_yields_empty() -> None:
+    assert aggregate_monthly_yields([]) == []
+
+
+def test_aggregate_monthly_yields_single_month() -> None:
+    yields = [
+        (date(2024, 6, 1), 10.0),
+        (date(2024, 6, 15), 20.5),
+        (date(2024, 6, 30), 5.0),
+    ]
+    result = aggregate_monthly_yields(yields)
+    assert result == [{"month": "2024-06", "yield": 35.5}]
+
+
+def test_aggregate_monthly_yields_two_months() -> None:
+    yields = [
+        (date(2024, 5, 31), 8.0),
+        (date(2024, 6, 1), 12.0),
+    ]
+    result = aggregate_monthly_yields(yields)
+    assert len(result) == 2
+    assert result[0] == {"month": "2024-05", "yield": 8.0}
+    assert result[1] == {"month": "2024-06", "yield": 12.0}
+
+
+def test_aggregate_monthly_yields_n_months_limit() -> None:
+    # 15 months of data, limit to 3
+    yields = [(date(2023, m, 1), float(m)) for m in range(1, 10)]
+    yields += [(date(2024, m, 1), float(m + 100)) for m in range(1, 7)]
+    result = aggregate_monthly_yields(yields, n_months=3)
+    assert len(result) == 3
+    assert result[-1]["month"] == "2024-06"
+
+
+def test_aggregate_monthly_yields_sorted_chronologically() -> None:
+    yields = [
+        (date(2024, 3, 10), 5.0),
+        (date(2024, 1, 5), 3.0),
+        (date(2024, 2, 20), 4.0),
+    ]
+    result = aggregate_monthly_yields(yields)
+    months = [r["month"] for r in result]
+    assert months == sorted(months)
+
+
+def test_aggregate_monthly_yields_rounding() -> None:
+    yields = [(date(2024, 6, d), 1 / 3) for d in range(1, 4)]
+    result = aggregate_monthly_yields(yields)
+    assert result[0]["yield"] == round(1.0, 2)

@@ -6,6 +6,7 @@ hourly energy, price correlation, yield, and amortization logic.
 
 from __future__ import annotations
 
+from calendar import monthrange
 from collections import defaultdict
 from datetime import date, datetime, tzinfo
 from math import ceil
@@ -214,6 +215,22 @@ def aggregate_period_yields(
     }
 
 
+def aggregate_monthly_yields(
+    daily_yields: list[tuple[date, float]],
+    n_months: int = 13,
+) -> list[dict[str, Any]]:
+    """Return monthly yield aggregates for the last n_months, sorted chronologically.
+
+    Each entry: {"month": "YYYY-MM", "yield": float}.
+    Includes the current (incomplete) month as the last entry.
+    """
+    monthly: dict[str, float] = defaultdict(float)
+    for day, y in daily_yields:
+        monthly[f"{day.year}-{day.month:02d}"] += y
+    sorted_months = sorted(monthly)[-n_months:]
+    return [{"month": m, "yield": round(monthly[m], 2)} for m in sorted_months]
+
+
 def calculate_amortization_progress_pct(
     total_yield: float,
     installation_cost: float,
@@ -233,29 +250,33 @@ def format_time_until(target: date, today: date) -> str | None:
     if target <= today:
         return None
 
-    years = target.year - today.year
-    months = target.month - today.month
-    days = target.day - today.day
+    total_months = (target.year - today.year) * 12 + (target.month - today.month)
 
-    if days < 0:
-        months -= 1
-        # borrow days from the month before target
-        from calendar import monthrange
-        borrow_month = target.month - 1 if target.month > 1 else 12
-        borrow_year = target.year if target.month > 1 else target.year - 1
-        days += monthrange(borrow_year, borrow_month)[1]
+    # Anchor = today advanced by total_months calendar months, clamping the day
+    # to the last day of the destination month when today.day doesn't exist there.
+    def _advance_months(n: int) -> date:
+        m0 = today.month - 1 + n
+        y = today.year + m0 // 12
+        m = m0 % 12 + 1
+        d = min(today.day, monthrange(y, m)[1])
+        return date(y, m, d)
 
-    if months < 0:
-        years -= 1
-        months += 12
+    anchor = _advance_months(total_months)
+    if anchor > target:
+        total_months -= 1
+        anchor = _advance_months(total_months)
+
+    remaining_days = (target - anchor).days
+    years = total_months // 12
+    months = total_months % 12
 
     parts = []
     if years > 0:
         parts.append(f"{years}y")
     if months > 0:
         parts.append(f"{months}m")
-    if days > 0 or not parts:
-        parts.append(f"{days}d")
+    if remaining_days > 0 or not parts:
+        parts.append(f"{remaining_days}d")
 
     return " ".join(parts)
 
