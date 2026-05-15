@@ -111,7 +111,7 @@ cards:
     header:
       show: true
       title: Monatliche Erträge
-    chart_type: bar
+    chart_type: line
     apex_config:
       xaxis:
         type: datetime
