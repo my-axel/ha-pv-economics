@@ -174,7 +174,6 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_AVERAGE_DAILY_YIELD,
         value_key=VALUE_AVERAGE_DAILY_YIELD,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
     ),
     PVEconomicsSensorEntityDescription(
