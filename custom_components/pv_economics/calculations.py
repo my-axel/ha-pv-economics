@@ -224,20 +224,53 @@ def calculate_amortization_progress_pct(
     return total_yield / installation_cost
 
 
+def format_time_until(target: date, today: date) -> str | None:
+    """Return a human-readable string for the time between today and target.
+
+    Format: "Xy Xm Xd", omitting leading zero components (e.g. "5m 3d", "12d").
+    Returns None when target is not in the future.
+    """
+    if target <= today:
+        return None
+
+    years = target.year - today.year
+    months = target.month - today.month
+    days = target.day - today.day
+
+    if days < 0:
+        months -= 1
+        # borrow days from the month before target
+        from calendar import monthrange
+        borrow_month = target.month - 1 if target.month > 1 else 12
+        borrow_year = target.year if target.month > 1 else target.year - 1
+        days += monthrange(borrow_year, borrow_month)[1]
+
+    if months < 0:
+        years -= 1
+        months += 12
+
+    parts = []
+    if years > 0:
+        parts.append(f"{years}y")
+    if months > 0:
+        parts.append(f"{months}m")
+    if days > 0 or not parts:
+        parts.append(f"{days}d")
+
+    return " ".join(parts)
+
+
 def calculate_amortization_date(
     daily_yields: list[tuple[date, float]],
     installation_cost: float,
     total_yield: float,
     historical_offset: float,
-    commissioning_date: date,
-    min_history_days: int,
     rolling_window_days: int,
     today: date,
 ) -> date | None:
     """Project or find the historical amortization date.
 
     Returns None when:
-    - The system is younger than min_history_days (checked against commissioning_date)
     - No daily yield data is available
     - The daily average yield is <= 0
     - The system is already amortized but the exact break-even date predates HA data
@@ -247,10 +280,6 @@ def calculate_amortization_date(
 
     Returns a projected future date otherwise.
     """
-    system_age_days = (today - commissioning_date).days
-    if system_age_days < min_history_days:
-        return None
-
     if total_yield >= installation_cost:
         if historical_offset >= installation_cost:
             # Already amortised before tracking started; exact date unknown.

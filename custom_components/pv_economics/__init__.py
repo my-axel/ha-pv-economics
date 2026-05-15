@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
+from homeassistant.core import Event, HomeAssistant
 
 from .const import (
     CONF_COMMISSIONING_DATE,
@@ -33,6 +34,21 @@ async def async_setup_entry(
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+
+    # The recorder may not have finished compiling hourly statistics when the
+    # integration loads during HA startup. Schedule a refresh once HA is fully
+    # started so the coordinator sees up-to-date statistics. If HA is already
+    # running (e.g. manual reload), skip — the next scheduled update suffices.
+    if not hass.is_running:
+        async def _async_refresh_after_start(_event: Event) -> None:
+            await coordinator.async_refresh()
+
+        entry.async_on_unload(
+            hass.bus.async_listen_once(
+                EVENT_HOMEASSISTANT_STARTED, _async_refresh_after_start
+            )
+        )
+
     return True
 
 

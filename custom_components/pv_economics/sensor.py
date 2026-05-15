@@ -49,6 +49,8 @@ from .const import (
     VALUE_YIELD_TODAY,
 )
 from .coordinator import (
+    _AMORT_TIME_LEFT_KEY,
+    _DATA_DAYS_KEY,
     _FEED_IN_FROM_STATS_KEY,
     _HIST_FEED_IN_KEY,
     _HIST_SAVINGS_KEY,
@@ -160,6 +162,10 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         translation_key=VALUE_AMORTIZATION_DATE,
         value_key=VALUE_AMORTIZATION_DATE,
         device_class=SensorDeviceClass.DATE,
+        diagnostic_attr_keys={
+            _DATA_DAYS_KEY: "data_days",
+            _AMORT_TIME_LEFT_KEY: "time_left",
+        },
     ),
     PVEconomicsSensorEntityDescription(
         key=VALUE_DAYS_TO_AMORTIZATION,
@@ -168,6 +174,7 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.DURATION,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTime.DAYS,
+        diagnostic_attr_keys={_DATA_DAYS_KEY: "data_days"},
     ),
     PVEconomicsSensorEntityDescription(
         key=VALUE_AVERAGE_DAILY_YIELD,
@@ -179,6 +186,7 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         # currency unit for correct display.
         state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
+        diagnostic_attr_keys={_DATA_DAYS_KEY: "data_days"},
     ),
     PVEconomicsSensorEntityDescription(
         key=VALUE_SYSTEM_AGE_DAYS,

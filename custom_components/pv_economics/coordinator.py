@@ -27,6 +27,7 @@ from .calculations import (
     compute_hourly_deltas,
     compute_hourly_feed_in,
     compute_hourly_savings,
+    format_time_until,
 )
 from .const import (
     CONF_COMMISSIONING_DATE,
@@ -41,14 +42,12 @@ from .const import (
     CONF_HISTORICAL_FEED_IN,
     CONF_HISTORICAL_SAVINGS,
     CONF_INSTALLATION_COST,
-    CONF_MIN_HISTORY_DAYS,
     CONF_PV_PRODUCTION_ENTITY,
     CONF_ROLLING_WINDOW_DAYS,
     CONF_STATISTICS_START_DATE,
     CONF_UPDATE_INTERVAL_MINUTES,
     DEFAULT_HISTORICAL_FEED_IN,
     DEFAULT_HISTORICAL_SAVINGS,
-    DEFAULT_MIN_HISTORY_DAYS,
     DEFAULT_ROLLING_WINDOW_DAYS,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DOMAIN,
@@ -92,6 +91,8 @@ _HIST_FEED_IN_KEY = "_historical_feed_in"
 _STATS_FIRST_DATE_KEY = "_statistics_first_date"
 _STATS_LAST_DATE_KEY = "_statistics_last_date"
 _STATS_HOURS_KEY = "_statistics_hours"
+_DATA_DAYS_KEY = "_data_days"
+_AMORT_TIME_LEFT_KEY = "_amort_time_left"
 
 
 class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -126,9 +127,6 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         historical_feed_in_eur = float(
             cfg.get(CONF_HISTORICAL_FEED_IN, DEFAULT_HISTORICAL_FEED_IN)
-        )
-        min_history_days = int(
-            cfg.get(CONF_MIN_HISTORY_DAYS, DEFAULT_MIN_HISTORY_DAYS)
         )
         rolling_window_days = int(
             cfg.get(CONF_ROLLING_WINDOW_DAYS, DEFAULT_ROLLING_WINDOW_DAYS)
@@ -317,8 +315,6 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             installation_cost,
             total_yield,
             historical_offset_combined,
-            commissioning_date,
-            min_history_days,
             rolling_window_days,
             today,
         )
@@ -436,6 +432,8 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _STATS_FIRST_DATE_KEY: stats_first,
             _STATS_LAST_DATE_KEY: stats_last,
             _STATS_HOURS_KEY: len(sc_hourly),
+            _DATA_DAYS_KEY: len(daily_yields),
+            _AMORT_TIME_LEFT_KEY: format_time_until(amort_date, today) if amort_date else None,
         }
 
     def _compute_live_savings_eur(

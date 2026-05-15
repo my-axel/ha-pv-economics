@@ -22,6 +22,7 @@ from custom_components.pv_economics.calculations import (
     compute_hourly_deltas,
     compute_hourly_feed_in,
     compute_hourly_savings,
+    format_time_until,
 )
 
 UTC = timezone.utc
@@ -444,18 +445,9 @@ def _daily(day_offset: int, eur: float) -> tuple[date, float]:
     return (date.fromordinal(_COMMISSIONING.toordinal() + day_offset), eur)
 
 
-def test_amortization_date_system_too_young() -> None:
-    # System is only 10 days old (commissioning is 10 days before today)
-    young_today = date(2022, 1, 11)
-    result = calculate_amortization_date(
-        [], 10000.0, 500.0, 0.0, _COMMISSIONING, 60, 365, young_today
-    )
-    assert result is None
-
-
 def test_amortization_date_no_daily_data() -> None:
     result = calculate_amortization_date(
-        [], 10000.0, 500.0, 0.0, _COMMISSIONING, 60, 365, _TODAY
+        [], 10000.0, 500.0, 0.0, 365, _TODAY
     )
     assert result is None
 
@@ -463,7 +455,7 @@ def test_amortization_date_no_daily_data() -> None:
 def test_amortization_date_negative_avg_yield() -> None:
     daily = [_daily(100, -1.0), _daily(101, -0.5)]
     result = calculate_amortization_date(
-        daily, 10000.0, 500.0, 0.0, _COMMISSIONING, 60, 365, _TODAY
+        daily, 10000.0, 500.0, 0.0, 365, _TODAY
     )
     assert result is None
 
@@ -472,11 +464,22 @@ def test_amortization_date_future_projection() -> None:
     # avg daily yield = 1.0 EUR, need 9500 EUR more → 9500 days from today
     daily = [_daily(i, 1.0) for i in range(100, 465)]  # 365 days of data
     result = calculate_amortization_date(
-        daily, 10000.0, 500.0, 0.0, _COMMISSIONING, 60, 365, _TODAY
+        daily, 10000.0, 500.0, 0.0, 365, _TODAY
     )
     assert result is not None
     from datetime import timedelta
     assert result == _TODAY + timedelta(days=9500)
+
+
+def test_amortization_date_with_minimal_data() -> None:
+    # Even a single day of data produces a projection now (no min-history gate)
+    daily = [_daily(1, 2.0)]
+    result = calculate_amortization_date(
+        daily, 10000.0, 2.0, 0.0, 365, _TODAY
+    )
+    assert result is not None
+    from datetime import timedelta
+    assert result == _TODAY + timedelta(days=4999)
 
 
 def test_amortization_date_already_amortized_in_ha_data() -> None:
@@ -484,7 +487,7 @@ def test_amortization_date_already_amortized_in_ha_data() -> None:
     # Simulate: days 1-100 each earn 100 EUR (offset 0), cross at day 100
     daily = [_daily(i, 100.0) for i in range(1, 106)]
     result = calculate_amortization_date(
-        daily, 10000.0, 10500.0, 0.0, _COMMISSIONING, 60, 365, _TODAY
+        daily, 10000.0, 10500.0, 0.0, 365, _TODAY
     )
     # cumulative: 100, 200, ..., 10000 at day 100
     assert result == date.fromordinal(_COMMISSIONING.toordinal() + 100)
@@ -493,7 +496,7 @@ def test_amortization_date_already_amortized_in_ha_data() -> None:
 def test_amortization_date_already_amortized_by_offset() -> None:
     # historical_offset alone covers the cost
     result = calculate_amortization_date(
-        [], 5000.0, 6000.0, 6000.0, _COMMISSIONING, 60, 365, _TODAY
+        [], 5000.0, 6000.0, 6000.0, 365, _TODAY
     )
     # Can't pinpoint exact date before HA data → None
     assert result is None
@@ -503,7 +506,7 @@ def test_amortization_date_projection_overflow_returns_none() -> None:
     # Tiny avg_daily yield with huge remaining cost → projection past year 9999
     daily = [_daily(i, 0.0001) for i in range(100, 200)]
     result = calculate_amortization_date(
-        daily, 1_000_000.0, 0.0, 0.0, _COMMISSIONING, 60, 365, _TODAY
+        daily, 1_000_000.0, 0.0, 0.0, 365, _TODAY
     )
     # days_remaining would be ~10 billion days → past date.max → None
     assert result is None
@@ -513,7 +516,7 @@ def test_amortization_date_offset_alone_covers_cost_with_ha_data() -> None:
     # Offset alone >= installation_cost; HA has data but break-even predates tracking
     daily = [_daily(i, 2.0) for i in range(100, 110)]
     result = calculate_amortization_date(
-        daily, 5000.0, 5200.0, 5100.0, _COMMISSIONING, 60, 365, _TODAY
+        daily, 5000.0, 5200.0, 5100.0, 365, _TODAY
     )
     # 5100 >= 5000 → amortised before tracking started, exact date unknown
     assert result is None
@@ -523,8 +526,49 @@ def test_amortization_date_rolling_window_capped() -> None:
     # Only 100 days of data, avg = 2.0 EUR/day, need 1000 more EUR
     daily = [_daily(i, 2.0) for i in range(100, 200)]  # 100 days
     result = calculate_amortization_date(
-        daily, 10000.0, 9000.0, 0.0, _COMMISSIONING, 60, 365, _TODAY
+        daily, 10000.0, 9000.0, 0.0, 365, _TODAY
     )
     assert result is not None
     from datetime import timedelta
     assert result == _TODAY + timedelta(days=500)
+
+
+# format_time_until
+# ---------------------------------------------------------------------------
+
+def test_format_time_until_years_months_days() -> None:
+    today = date(2024, 1, 15)
+    target = date(2036, 6, 20)
+    assert format_time_until(target, today) == "12y 5m 5d"
+
+
+def test_format_time_until_no_years() -> None:
+    today = date(2024, 1, 15)
+    target = date(2024, 6, 20)
+    assert format_time_until(target, today) == "5m 5d"
+
+
+def test_format_time_until_only_days() -> None:
+    today = date(2024, 1, 15)
+    target = date(2024, 1, 28)
+    assert format_time_until(target, today) == "13d"
+
+
+def test_format_time_until_exact_months() -> None:
+    today = date(2024, 1, 15)
+    target = date(2024, 4, 15)
+    assert format_time_until(target, today) == "3m"
+
+
+def test_format_time_until_day_borrow() -> None:
+    # target day < today day → borrows from month before target (April = 30 days)
+    # days = 10 - 31 = -21, borrow April's 30 days → 9 remaining days
+    today = date(2024, 3, 31)
+    target = date(2024, 5, 10)
+    assert format_time_until(target, today) == "1m 9d"
+
+
+def test_format_time_until_not_future_returns_none() -> None:
+    today = date(2024, 6, 1)
+    assert format_time_until(today, today) is None
+    assert format_time_until(date(2024, 5, 31), today) is None
