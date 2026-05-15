@@ -192,9 +192,15 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         prod_in_sc_period = sum(kwh for ts, kwh in prod_deltas if ts in sc_timestamps)
         sc_rate = calculate_self_consumption_rate(sc_total, prod_in_sc_period)
 
+        prod_total_kwh = sum(kwh for _, kwh in prod_deltas)
+        exp_total_kwh = sum(kwh for _, kwh in exp_deltas)
+
         sc_sufficiency: float | None = None
+        imp_total_kwh = 0.0
+        imp_in_sc_period = 0.0
         if imp_id:
             imp_deltas = compute_hourly_deltas(stats.get(imp_id, []))
+            imp_total_kwh = sum(kwh for _, kwh in imp_deltas)
             # Same period constraint: only count import during SC hours.
             imp_in_sc_period = sum(kwh for ts, kwh in imp_deltas if ts in sc_timestamps)
             sc_sufficiency = calculate_self_sufficiency(sc_total, imp_in_sc_period)
@@ -245,13 +251,40 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         else:
             live_start = dt_util.start_of_local_day()
 
+        live_entity_ids = [prod_id, exp_id]
+        if imp_id:
+            live_entity_ids.append(imp_id)
+
         live_stats = await async_get_statistics(
-            self.hass, [prod_id, exp_id], live_start, end, period="5minute"
+            self.hass, live_entity_ids, live_start, end, period="5minute"
         )
         live_prod_deltas = compute_hourly_deltas(live_stats.get(prod_id, []))
         live_exp_deltas = compute_hourly_deltas(live_stats.get(exp_id, []))
         live_sc = calculate_hourly_self_consumption(live_prod_deltas, live_exp_deltas)
 
+        live_sc_kwh = sum(kwh for _, kwh in live_sc)
+        live_sc_timestamps = {ts for ts, _ in live_sc}
+        live_prod_in_sc = sum(kwh for ts, kwh in live_prod_deltas if ts in live_sc_timestamps)
+        live_prod_kwh = sum(kwh for _, kwh in live_prod_deltas)
+        live_exp_kwh = sum(kwh for _, kwh in live_exp_deltas)
+
+        live_imp_kwh = 0.0
+        if imp_id:
+            live_imp_deltas = compute_hourly_deltas(live_stats.get(imp_id, []))
+            live_imp_kwh = sum(kwh for _, kwh in live_imp_deltas)
+
+        # ── Combined kWh (stats + live) ───────────────────────────────────────
+        sc_total_live = sc_total + live_sc_kwh
+        sc_rate_live = calculate_self_consumption_rate(
+            sc_total_live, prod_in_sc_period + live_prod_in_sc
+        )
+        sc_sufficiency_live: float | None = None
+        if imp_id:
+            sc_sufficiency_live = calculate_self_sufficiency(
+                sc_total_live, imp_in_sc_period + live_imp_kwh
+            )
+
+        # ── Combined monetary (stats + live) ──────────────────────────────────
         live_savings_eur = self._compute_live_savings_eur(
             live_sc, cfg, price_mode, price_entity
         )
@@ -259,6 +292,13 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             live_exp_deltas, cfg, tariff_mode, tariff_entity
         )
         live_yield_eur = live_savings_eur + live_feed_in_eur
+
+        savings_all_live = savings_all + live_savings_eur
+        feed_in_all_live = feed_in_all + live_feed_in_eur
+        total_yield_live = savings_all_live + feed_in_all_live
+        progress_pct_live = calculate_amortization_progress_pct(
+            total_yield_live, installation_cost
+        )
 
         daily_yields = aggregate_daily_yields(hourly_savings, hourly_feed_in, local_tz)
         period_yields = aggregate_period_yields(daily_yields, today)
@@ -269,8 +309,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             aggregate_daily(hourly_feed_in, local_tz), today
         )
 
-        # Add the live (current-hour) supplement to all period buckets that
-        # include today — today is always inside this_week / this_month / this_year.
+        # Add the live supplement to all period buckets that include today.
         for period in ("today", "this_week", "this_month", "this_year"):
             period_yields[period] += live_yield_eur
             period_savings[period] += live_savings_eur
@@ -295,49 +334,94 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         stats_first = sc_hourly[0][0].date() if sc_hourly else None
         stats_last = sc_hourly[-1][0].date() if sc_hourly else None
+        live_buckets = len(live_prod_deltas)
+
         _LOGGER.debug(
-            "PV Economics update: statistics %s..%s (%d hours), "
-            "savings stats=%.2f + hist=%.2f = %.2f, "
-            "feed_in stats=%.2f + hist=%.2f = %.2f, "
-            "yield today=%.2f (live+%.2f) week=%.2f month=%.2f year=%.2f",
+            "PV Economics | Energy (kWh)\n"
+            "  Stats:      %s → %s  (%d complete hours)\n"
+            "  Live:       %s → now  (%d 5-min buckets)\n"
+            "  Production  stats %.3f kWh + live %.3f kWh = %.3f kWh\n"
+            "  Export      stats %.3f kWh + live %.3f kWh\n"
+            "  Self-cons.  stats %.3f kWh + live %.3f kWh = %.3f kWh  "
+            "(rate %.1f%%)\n"
+            "  Sufficiency %.1f%%  (import stats %.3f kWh + live %.3f kWh)",
             stats_first,
             stats_last,
             len(sc_hourly),
+            live_start.strftime("%Y-%m-%d %H:%M"),
+            live_buckets,
+            prod_total_kwh,
+            live_prod_kwh,
+            prod_total_kwh + live_prod_kwh,
+            exp_total_kwh,
+            live_exp_kwh,
+            sc_total,
+            live_sc_kwh,
+            sc_total_live,
+            (sc_rate_live * 100.0) if sc_rate_live is not None else 0.0,
+            (sc_sufficiency_live * 100.0) if sc_sufficiency_live is not None else 0.0,
+            imp_total_kwh,
+            live_imp_kwh,
+        )
+
+        price_desc = self._price_description(price_mode, price_entity, price_fallback, cfg)
+        tariff_desc = self._price_description(tariff_mode, tariff_entity, tariff_fallback, cfg, is_tariff=True)
+        _LOGGER.debug(
+            "PV Economics | Monetary\n"
+            "  Price:      %s\n"
+            "  Tariff:     %s\n"
+            "  Savings     stats %.2f + hist %.2f + live %.2f = %.2f EUR\n"
+            "  Feed-in     stats %.2f + hist %.2f + live %.2f = %.2f EUR\n"
+            "  Total yield %.2f EUR  net %.2f EUR  progress %.1f%%\n"
+            "  Today       savings %.2f  feed-in %.2f  yield %.2f EUR\n"
+            "  This week   %.2f EUR  month %.2f EUR  year %.2f EUR",
+            price_desc,
+            tariff_desc,
             savings_eur,
             historical_savings_eur,
-            savings_all,
+            live_savings_eur,
+            savings_all_live,
             feed_in_eur,
             historical_feed_in_eur,
-            feed_in_all,
+            live_feed_in_eur,
+            feed_in_all_live,
+            total_yield_live,
+            total_yield_live - installation_cost,
+            (progress_pct_live * 100.0) if progress_pct_live is not None else 0.0,
+            period_savings["today"],
+            period_feed_in["today"],
             period_yields["today"],
-            live_yield_eur,
             period_yields["this_week"],
             period_yields["this_month"],
             period_yields["this_year"],
         )
 
         return {
-            VALUE_SELF_CONSUMPTION: round(sc_total, 3),
+            VALUE_SELF_CONSUMPTION: round(sc_total_live, 3),
             VALUE_SELF_CONSUMPTION_RATE: (
-                round(sc_rate * 100.0, 1) if sc_rate is not None else None
+                round(sc_rate_live * 100.0, 1) if sc_rate_live is not None else None
             ),
             VALUE_SELF_SUFFICIENCY: (
-                round(sc_sufficiency * 100.0, 1) if sc_sufficiency is not None else None
+                round(sc_sufficiency_live * 100.0, 1)
+                if sc_sufficiency_live is not None
+                else None
             ),
-            VALUE_TOTAL_SAVINGS: round(savings_all, 2),
-            VALUE_FEED_IN_REVENUE: round(feed_in_all, 2),
-            VALUE_TOTAL_YIELD: round(total_yield, 2),
-            VALUE_NET_YIELD: round(total_yield - installation_cost, 2),
+            VALUE_TOTAL_SAVINGS: round(savings_all_live, 2),
+            VALUE_FEED_IN_REVENUE: round(feed_in_all_live, 2),
+            VALUE_TOTAL_YIELD: round(total_yield_live, 2),
+            VALUE_NET_YIELD: round(total_yield_live - installation_cost, 2),
             VALUE_SYSTEM_AGE_DAYS: system_age_days,
             VALUE_AMORTIZATION_PROGRESS_PCT: (
-                round(progress_pct * 100.0, 1) if progress_pct is not None else None
+                round(progress_pct_live * 100.0, 1)
+                if progress_pct_live is not None
+                else None
             ),
             VALUE_AMORTIZATION_DATE: amort_date,
             VALUE_DAYS_TO_AMORTIZATION: days_to_amort,
             VALUE_AVERAGE_DAILY_YIELD: (
                 round(avg_daily, 2) if avg_daily is not None else None
             ),
-            VALUE_IS_AMORTIZED: total_yield >= installation_cost,
+            VALUE_IS_AMORTIZED: total_yield_live >= installation_cost,
             VALUE_YIELD_TODAY: round(period_yields["today"], 2),
             VALUE_YIELD_THIS_WEEK: round(period_yields["this_week"], 2),
             VALUE_YIELD_THIS_MONTH: round(period_yields["this_month"], 2),
@@ -417,6 +501,28 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return total_exp_kwh * tariff_ct / 100.0
         except ValueError:
             return 0.0
+
+    def _price_description(
+        self,
+        mode: str,
+        entity: str | None,
+        fallback: bool,
+        cfg: dict[str, Any],
+        *,
+        is_tariff: bool = False,
+    ) -> str:
+        """Return a human-readable description of the configured price/tariff."""
+        if mode != TARIFF_MODE_ENTITY:
+            value_key = CONF_FEED_IN_TARIFF_VALUE if is_tariff else CONF_ELECTRICITY_PRICE_VALUE
+            return f"fixed {cfg.get(value_key, '?')} ct/kWh"
+        if not entity:
+            return "entity (not configured)"
+        state = self.hass.states.get(entity)
+        if not state or state.state in ("unknown", "unavailable"):
+            return f"entity {entity} [unavailable]"
+        unit = state.attributes.get("unit_of_measurement", "?")
+        suffix = " [no statistics, using current state]" if fallback else ""
+        return f"entity {entity} = {state.state} {unit}{suffix}"
 
     def _unit_to_ct_factor(self, entity_id: str) -> float:
         """Return factor to normalize an entity's price/tariff value to ct/kWh.
