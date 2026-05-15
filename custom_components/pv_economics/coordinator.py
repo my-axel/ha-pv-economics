@@ -322,6 +322,21 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _STATS_HOURS_KEY: len(sc_hourly),
         }
 
+    def _unit_to_ct_factor(self, entity_id: str) -> float:
+        """Return factor to normalize an entity's price/tariff value to ct/kWh.
+
+        Returns 100.0 when the entity reports in a major currency per kWh
+        (EUR/kWh, €/kWh, $/kWh …) so that multiplying converts to ct/kWh.
+        Returns 1.0 otherwise, assuming the value is already in ct/kWh.
+        """
+        state = self.hass.states.get(entity_id)
+        if not state:
+            return 1.0
+        unit = (state.attributes.get("unit_of_measurement") or "").lower()
+        if any(sym in unit for sym in ("eur", "€", "usd", "$", "gbp", "£")):
+            return 100.0
+        return 1.0
+
     def _compute_savings(
         self,
         sc_hourly: list[tuple[datetime, float]],
@@ -338,6 +353,8 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 fixed_price_ct=float(cfg[CONF_ELECTRICITY_PRICE_VALUE]),
             )
 
+        factor = self._unit_to_ct_factor(price_entity or "")
+
         if price_fallback or not price_entity:
             # Fallback: apply the current sensor state uniformly to every hour
             # so daily aggregation stays meaningful (the total equals
@@ -349,7 +366,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 and state.state not in ("unknown", "unavailable")
             ):
                 try:
-                    current_price_eur = float(state.state) / 100.0
+                    current_price_eur = float(state.state) * factor / 100.0
                     return [(ts, kwh * current_price_eur) for ts, kwh in sc_hourly]
                 except ValueError:
                     pass
@@ -357,7 +374,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         price_buckets = stats.get(price_entity, [])
         hourly_prices = [
-            (row["start"], row["mean"])
+            (row["start"], row["mean"] * factor)
             for row in price_buckets
             if row.get("mean") is not None
         ]
@@ -379,6 +396,8 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 fixed_tariff_ct=float(cfg[CONF_FEED_IN_TARIFF_VALUE]),
             )
 
+        factor = self._unit_to_ct_factor(tariff_entity or "")
+
         if tariff_fallback or not tariff_entity:
             # Fallback: apply the current sensor state uniformly to every hour
             # so daily aggregation stays meaningful.
@@ -389,7 +408,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 and state.state not in ("unknown", "unavailable")
             ):
                 try:
-                    current_tariff_eur = float(state.state) / 100.0
+                    current_tariff_eur = float(state.state) * factor / 100.0
                     return [(ts, kwh * current_tariff_eur) for ts, kwh in exp_deltas]
                 except ValueError:
                     pass
@@ -397,7 +416,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         tariff_buckets = stats.get(tariff_entity, [])
         hourly_tariffs = [
-            (row["start"], row["mean"])
+            (row["start"], row["mean"] * factor)
             for row in tariff_buckets
             if row.get("mean") is not None
         ]
