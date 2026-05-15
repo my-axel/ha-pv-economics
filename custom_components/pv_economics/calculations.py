@@ -231,6 +231,58 @@ def aggregate_monthly_yields(
     return [{"month": m, "yield": round(monthly[m], 2)} for m in sorted_months]
 
 
+def compute_hourly_battery_from_power(
+    power_stats: list[dict[str, Any]],
+    positive_is_charge: bool,
+    unit_is_kw: bool = False,
+    bucket_hours: float = 1.0,
+) -> tuple[list[tuple[datetime, float]], list[tuple[datetime, float]]]:
+    """Derive hourly charge and discharge kWh from mean-power statistics.
+
+    Returns (charge_hourly, discharge_hourly) as (datetime, kWh) lists.
+    bucket_hours is 1.0 for hourly stats and 5/60 for 5-minute live stats.
+    """
+    scale = bucket_hours if unit_is_kw else bucket_hours / 1000.0
+    charge: list[tuple[datetime, float]] = []
+    discharge: list[tuple[datetime, float]] = []
+    for bucket in power_stats:
+        mean = bucket.get("mean")
+        if mean is None:
+            continue
+        ts = bucket["start"]
+        energy_kwh = mean * scale
+        if positive_is_charge:
+            charge.append((ts, max(0.0, energy_kwh)))
+            discharge.append((ts, max(0.0, -energy_kwh)))
+        else:
+            charge.append((ts, max(0.0, -energy_kwh)))
+            discharge.append((ts, max(0.0, energy_kwh)))
+    return charge, discharge
+
+
+def compute_hourly_battery_from_energy(
+    charge_buckets: list[dict[str, Any]],
+    discharge_buckets: list[dict[str, Any]],
+) -> tuple[list[tuple[datetime, float]], list[tuple[datetime, float]]]:
+    """Derive hourly charge and discharge kWh from cumulative-sum statistics."""
+    return (
+        compute_hourly_deltas(charge_buckets),
+        compute_hourly_deltas(discharge_buckets),
+    )
+
+
+def adjust_sc_for_battery(
+    sc_hourly: list[tuple[datetime, float]],
+    charge_hourly: list[tuple[datetime, float]],
+) -> list[tuple[datetime, float]]:
+    """Subtract battery charging from hourly SC to avoid double-counting."""
+    charge_by_ts = dict(charge_hourly)
+    return [
+        (ts, max(0.0, kwh - charge_by_ts.get(ts, 0.0)))
+        for ts, kwh in sc_hourly
+    ]
+
+
 def calculate_amortization_progress_pct(
     total_yield: float,
     installation_cost: float,

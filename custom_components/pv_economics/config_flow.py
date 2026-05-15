@@ -14,6 +14,7 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     DateSelector,
     DateSelectorConfig,
     EntitySelector,
@@ -21,12 +22,22 @@ from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
+    SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
 )
 
 from .const import (
+    BATTERY_POSITIVE_CHARGE,
+    BATTERY_POSITIVE_DISCHARGE,
+    BATTERY_TYPE_BIDIRECTIONAL,
+    BATTERY_TYPE_TWO_SENSORS,
+    CONF_BATTERY_CHARGE_ENTITY,
+    CONF_BATTERY_DISCHARGE_ENTITY,
+    CONF_BATTERY_POWER_ENTITY,
+    CONF_BATTERY_POWER_POSITIVE,
+    CONF_BATTERY_SENSOR_TYPE,
     CONF_COMMISSIONING_DATE,
     CONF_ELECTRICITY_PRICE_ENTITY,
     CONF_ELECTRICITY_PRICE_MODE,
@@ -36,6 +47,7 @@ from .const import (
     CONF_FEED_IN_TARIFF_VALUE,
     CONF_GRID_EXPORT_ENTITY,
     CONF_GRID_IMPORT_ENTITY,
+    CONF_HAS_BATTERY,
     CONF_HISTORICAL_FEED_IN,
     CONF_HISTORICAL_SAVINGS,
     CONF_INSTALLATION_COST,
@@ -89,6 +101,40 @@ def _energy_entity_selector() -> EntitySelector:
 
 def _entity_selector() -> EntitySelector:
     return EntitySelector(EntitySelectorConfig(domain="sensor"))
+
+
+def _battery_type_selector() -> SelectSelector:
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=[
+                SelectOptionDict(
+                    value=BATTERY_TYPE_BIDIRECTIONAL,
+                    label="Bidirectional power sensor (W/kW)",
+                ),
+                SelectOptionDict(
+                    value=BATTERY_TYPE_TWO_SENSORS,
+                    label="Two separate energy sensors (kWh)",
+                ),
+            ],
+            mode=SelectSelectorMode.DROPDOWN,
+        )
+    )
+
+
+def _battery_positive_selector() -> SelectSelector:
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=[
+                SelectOptionDict(
+                    value=BATTERY_POSITIVE_CHARGE, label="Positive = charging"
+                ),
+                SelectOptionDict(
+                    value=BATTERY_POSITIVE_DISCHARGE, label="Positive = discharging"
+                ),
+            ],
+            mode=SelectSelectorMode.DROPDOWN,
+        )
+    )
 
 
 def _required_key(
@@ -176,6 +222,11 @@ def _entities_schema(defaults: dict[str, Any]) -> vol.Schema:
                 defaults,
                 DEFAULT_ROLLING_WINDOW_DAYS,
             ): _number_selector(min_value=1),
+            _optional_key(
+                CONF_HAS_BATTERY,
+                defaults,
+                False,
+            ): BooleanSelector(),
         }
     )
 
@@ -278,11 +329,89 @@ class PVEconomicsConfigFlow(ConfigFlow, domain=DOMAIN):
         """Step 3: Energy sensors, pricing modes, and projection settings."""
         if user_input is not None:
             self._data.update(user_input)
+            if user_input.get(CONF_HAS_BATTERY):
+                return await self.async_step_battery_type()
+            for key in (
+                CONF_BATTERY_SENSOR_TYPE,
+                CONF_BATTERY_POWER_ENTITY,
+                CONF_BATTERY_POWER_POSITIVE,
+                CONF_BATTERY_CHARGE_ENTITY,
+                CONF_BATTERY_DISCHARGE_ENTITY,
+            ):
+                self._data.pop(key, None)
             return await self.async_step_feed_in_tariff()
 
         return self.async_show_form(
             step_id="entities",
             data_schema=_entities_schema(self._data),
+        )
+
+    async def async_step_battery_type(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
+        """Step 3b: Battery sensor type selection."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_battery_sensors()
+
+        return self.async_show_form(
+            step_id="battery_type",
+            data_schema=vol.Schema(
+                {
+                    _required_key(
+                        CONF_BATTERY_SENSOR_TYPE,
+                        self._data,
+                        BATTERY_TYPE_TWO_SENSORS,
+                    ): _battery_type_selector(),
+                }
+            ),
+        )
+
+    async def async_step_battery_sensors(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
+        """Step 3c: Battery sensor entity selection."""
+        if user_input is not None:
+            self._data.update(user_input)
+            # Clear stale keys for whichever sensor type was NOT chosen
+            if self._data.get(CONF_BATTERY_SENSOR_TYPE) == BATTERY_TYPE_BIDIRECTIONAL:
+                self._data.pop(CONF_BATTERY_CHARGE_ENTITY, None)
+                self._data.pop(CONF_BATTERY_DISCHARGE_ENTITY, None)
+            else:
+                self._data.pop(CONF_BATTERY_POWER_ENTITY, None)
+                self._data.pop(CONF_BATTERY_POWER_POSITIVE, None)
+            return await self.async_step_feed_in_tariff()
+
+        sensor_type = self._data.get(CONF_BATTERY_SENSOR_TYPE, BATTERY_TYPE_TWO_SENSORS)
+        if sensor_type == BATTERY_TYPE_BIDIRECTIONAL:
+            schema = vol.Schema(
+                {
+                    _required_key(
+                        CONF_BATTERY_POWER_ENTITY, self._data
+                    ): _entity_selector(),
+                    _required_key(
+                        CONF_BATTERY_POWER_POSITIVE,
+                        self._data,
+                        BATTERY_POSITIVE_CHARGE,
+                    ): _battery_positive_selector(),
+                }
+            )
+        else:
+            schema = vol.Schema(
+                {
+                    _required_key(
+                        CONF_BATTERY_CHARGE_ENTITY, self._data
+                    ): _energy_entity_selector(),
+                    _required_key(
+                        CONF_BATTERY_DISCHARGE_ENTITY, self._data
+                    ): _energy_entity_selector(),
+                }
+            )
+        return self.async_show_form(
+            step_id="battery_sensors",
+            data_schema=schema,
         )
 
     async def async_step_feed_in_tariff(
@@ -362,6 +491,16 @@ class PVEconomicsOptionsFlow(OptionsFlow):
         """Step 3: Edit energy sensors, pricing modes, and settings."""
         if user_input is not None:
             self._data.update(user_input)
+            if user_input.get(CONF_HAS_BATTERY):
+                return await self.async_step_battery_type()
+            for key in (
+                CONF_BATTERY_SENSOR_TYPE,
+                CONF_BATTERY_POWER_ENTITY,
+                CONF_BATTERY_POWER_POSITIVE,
+                CONF_BATTERY_CHARGE_ENTITY,
+                CONF_BATTERY_DISCHARGE_ENTITY,
+            ):
+                self._data.pop(key, None)
             return await self.async_step_feed_in_tariff()
 
         schema = _entities_schema(self._data).extend(
@@ -375,6 +514,74 @@ class PVEconomicsOptionsFlow(OptionsFlow):
         )
         return self.async_show_form(
             step_id="entities",
+            data_schema=schema,
+        )
+
+    async def async_step_battery_type(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
+        """Step 3b: Battery sensor type selection."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_battery_sensors()
+
+        return self.async_show_form(
+            step_id="battery_type",
+            data_schema=vol.Schema(
+                {
+                    _required_key(
+                        CONF_BATTERY_SENSOR_TYPE,
+                        self._data,
+                        BATTERY_TYPE_TWO_SENSORS,
+                    ): _battery_type_selector(),
+                }
+            ),
+        )
+
+    async def async_step_battery_sensors(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
+        """Step 3c: Battery sensor entity selection."""
+        if user_input is not None:
+            self._data.update(user_input)
+            # Clear stale keys for whichever sensor type was NOT chosen
+            if self._data.get(CONF_BATTERY_SENSOR_TYPE) == BATTERY_TYPE_BIDIRECTIONAL:
+                self._data.pop(CONF_BATTERY_CHARGE_ENTITY, None)
+                self._data.pop(CONF_BATTERY_DISCHARGE_ENTITY, None)
+            else:
+                self._data.pop(CONF_BATTERY_POWER_ENTITY, None)
+                self._data.pop(CONF_BATTERY_POWER_POSITIVE, None)
+            return await self.async_step_feed_in_tariff()
+
+        sensor_type = self._data.get(CONF_BATTERY_SENSOR_TYPE, BATTERY_TYPE_TWO_SENSORS)
+        if sensor_type == BATTERY_TYPE_BIDIRECTIONAL:
+            schema = vol.Schema(
+                {
+                    _required_key(
+                        CONF_BATTERY_POWER_ENTITY, self._data
+                    ): _entity_selector(),
+                    _required_key(
+                        CONF_BATTERY_POWER_POSITIVE,
+                        self._data,
+                        BATTERY_POSITIVE_CHARGE,
+                    ): _battery_positive_selector(),
+                }
+            )
+        else:
+            schema = vol.Schema(
+                {
+                    _required_key(
+                        CONF_BATTERY_CHARGE_ENTITY, self._data
+                    ): _energy_entity_selector(),
+                    _required_key(
+                        CONF_BATTERY_DISCHARGE_ENTITY, self._data
+                    ): _energy_entity_selector(),
+                }
+            )
+        return self.async_show_form(
+            step_id="battery_sensors",
             data_schema=schema,
         )
 

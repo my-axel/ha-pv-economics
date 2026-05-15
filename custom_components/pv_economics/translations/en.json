@@ -37,7 +37,8 @@
           "feed_in_tariff_mode": "Feed-in tariff mode",
           "electricity_price_mode": "Electricity price mode",
           "min_history_days": "Minimum history",
-          "rolling_window_days": "Projection window"
+          "rolling_window_days": "Projection window",
+          "has_battery": "Battery storage connected"
         },
         "data_description": {
           "pv_production_entity": "Sensor measuring the total energy your PV system has ever produced (kWh, state class: total_increasing). This is usually provided by your inverter integration.",
@@ -46,7 +47,34 @@
           "feed_in_tariff_mode": "Fixed: you enter a static rate in ct/kWh on the next screen. Entity: you select a sensor whose current value is used as the tariff (useful for variable tariffs).",
           "electricity_price_mode": "Fixed: you enter a static price in ct/kWh on the next screen. Entity: you select a sensor whose value is used as the price (e.g. Tibber, Awattar).",
           "min_history_days": "Minimum number of days since commissioning before a break-even date is projected. Prevents unreliable estimates when the system is brand new. Default: 60.",
-          "rolling_window_days": "How many recent days are used to calculate the average daily yield for projecting the break-even date. A longer window gives a smoother estimate. Default: 365."
+          "rolling_window_days": "How many recent days are used to calculate the average daily yield for projecting the break-even date. A longer window gives a smoother estimate. Default: 365.",
+          "has_battery": "Enable if your PV system includes a battery. Additional steps will allow you to configure the battery sensors."
+        }
+      },
+      "battery_type": {
+        "title": "Battery sensor type",
+        "description": "Select how your battery's charge and discharge data is available in Home Assistant.",
+        "data": {
+          "battery_sensor_type": "Battery sensor type"
+        },
+        "data_description": {
+          "battery_sensor_type": "Bidirectional: one power sensor (W/kW) that is positive when charging and negative when discharging (or vice versa). Two sensors: separate kWh sensors for charge and discharge energy."
+        }
+      },
+      "battery_sensors": {
+        "title": "Battery sensors",
+        "description": "Select the sensor(s) that provide battery charge and discharge data.",
+        "data": {
+          "battery_power_entity": "Battery power sensor",
+          "battery_power_positive": "Positive values mean",
+          "battery_charge_entity": "Battery charge energy",
+          "battery_discharge_entity": "Battery discharge energy"
+        },
+        "data_description": {
+          "battery_power_entity": "Sensor measuring battery power in W or kW. Positive or negative values indicate charging or discharging depending on your system.",
+          "battery_power_positive": "Choose whether positive values from the power sensor indicate charging or discharging.",
+          "battery_charge_entity": "Sensor measuring total energy charged into the battery (kWh, total_increasing).",
+          "battery_discharge_entity": "Sensor measuring total energy discharged from the battery (kWh, total_increasing)."
         }
       },
       "feed_in_tariff": {
@@ -120,7 +148,8 @@
           "electricity_price_mode": "Electricity price mode",
           "min_history_days": "Minimum history",
           "rolling_window_days": "Projection window",
-          "update_interval_minutes": "Update interval"
+          "update_interval_minutes": "Update interval",
+          "has_battery": "Battery storage connected"
         },
         "data_description": {
           "pv_production_entity": "Sensor measuring total energy produced by your PV system (kWh, total_increasing).",
@@ -130,7 +159,34 @@
           "electricity_price_mode": "Fixed: static price in ct/kWh. Entity: sensor-based price.",
           "min_history_days": "Minimum days since commissioning before a break-even date is projected. Default: 60.",
           "rolling_window_days": "Recent days used for the break-even projection. Default: 365.",
-          "update_interval_minutes": "How often the integration recalculates all values. Lower values increase recorder load."
+          "update_interval_minutes": "How often the integration recalculates all values. Lower values increase recorder load.",
+          "has_battery": "Enable if your PV system includes a battery."
+        }
+      },
+      "battery_type": {
+        "title": "Battery sensor type",
+        "description": "Select how your battery's charge and discharge data is available in Home Assistant.",
+        "data": {
+          "battery_sensor_type": "Battery sensor type"
+        },
+        "data_description": {
+          "battery_sensor_type": "Bidirectional: one power sensor (W/kW). Two sensors: separate kWh sensors for charge and discharge."
+        }
+      },
+      "battery_sensors": {
+        "title": "Battery sensors",
+        "description": "Select the sensor(s) that provide battery charge and discharge data.",
+        "data": {
+          "battery_power_entity": "Battery power sensor",
+          "battery_power_positive": "Positive values mean",
+          "battery_charge_entity": "Battery charge energy",
+          "battery_discharge_entity": "Battery discharge energy"
+        },
+        "data_description": {
+          "battery_power_entity": "Sensor measuring battery power in W or kW.",
+          "battery_power_positive": "Choose whether positive values indicate charging or discharging.",
+          "battery_charge_entity": "Sensor measuring total energy charged into the battery (kWh, total_increasing).",
+          "battery_discharge_entity": "Sensor measuring total energy discharged from the battery (kWh, total_increasing)."
         }
       },
       "feed_in_tariff": {

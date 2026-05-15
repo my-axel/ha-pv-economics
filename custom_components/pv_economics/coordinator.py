@@ -12,6 +12,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .calculations import (
+    adjust_sc_for_battery,
     aggregate_daily,
     aggregate_daily_yields,
     aggregate_monthly_yields,
@@ -25,12 +26,21 @@ from .calculations import (
     calculate_self_consumption,
     calculate_self_consumption_rate,
     calculate_self_sufficiency,
+    compute_hourly_battery_from_energy,
+    compute_hourly_battery_from_power,
     compute_hourly_deltas,
     compute_hourly_feed_in,
     compute_hourly_savings,
     format_time_until,
 )
 from .const import (
+    BATTERY_POSITIVE_CHARGE,
+    BATTERY_TYPE_BIDIRECTIONAL,
+    CONF_BATTERY_CHARGE_ENTITY,
+    CONF_BATTERY_DISCHARGE_ENTITY,
+    CONF_BATTERY_POWER_ENTITY,
+    CONF_BATTERY_POWER_POSITIVE,
+    CONF_BATTERY_SENSOR_TYPE,
     CONF_COMMISSIONING_DATE,
     CONF_ELECTRICITY_PRICE_ENTITY,
     CONF_ELECTRICITY_PRICE_MODE,
@@ -40,6 +50,7 @@ from .const import (
     CONF_FEED_IN_TARIFF_VALUE,
     CONF_GRID_EXPORT_ENTITY,
     CONF_GRID_IMPORT_ENTITY,
+    CONF_HAS_BATTERY,
     CONF_HISTORICAL_FEED_IN,
     CONF_HISTORICAL_SAVINGS,
     CONF_INSTALLATION_COST,
@@ -58,22 +69,22 @@ from .const import (
     VALUE_AVERAGE_DAILY_YIELD,
     VALUE_DAYS_TO_AMORTIZATION,
     VALUE_FEED_IN_REVENUE,
+    VALUE_FEED_IN_THIS_MONTH,
+    VALUE_FEED_IN_THIS_WEEK,
+    VALUE_FEED_IN_THIS_YEAR,
+    VALUE_FEED_IN_TODAY,
     VALUE_IS_AMORTIZED,
     VALUE_NET_YIELD,
+    VALUE_SAVINGS_THIS_MONTH,
+    VALUE_SAVINGS_THIS_WEEK,
+    VALUE_SAVINGS_THIS_YEAR,
+    VALUE_SAVINGS_TODAY,
     VALUE_SELF_CONSUMPTION,
     VALUE_SELF_CONSUMPTION_RATE,
     VALUE_SELF_SUFFICIENCY,
     VALUE_SYSTEM_AGE_DAYS,
     VALUE_TOTAL_SAVINGS,
     VALUE_TOTAL_YIELD,
-    VALUE_FEED_IN_THIS_MONTH,
-    VALUE_FEED_IN_THIS_WEEK,
-    VALUE_FEED_IN_THIS_YEAR,
-    VALUE_FEED_IN_TODAY,
-    VALUE_SAVINGS_THIS_MONTH,
-    VALUE_SAVINGS_THIS_WEEK,
-    VALUE_SAVINGS_THIS_YEAR,
-    VALUE_SAVINGS_TODAY,
     VALUE_YIELD_THIS_MONTH,
     VALUE_YIELD_THIS_WEEK,
     VALUE_YIELD_THIS_YEAR,
@@ -148,9 +159,36 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         price_entity: str | None = cfg.get(CONF_ELECTRICITY_PRICE_ENTITY)
         tariff_entity: str | None = cfg.get(CONF_FEED_IN_TARIFF_ENTITY)
 
+        has_battery = cfg.get(CONF_HAS_BATTERY, False)
+        bat_type: str | None = None
+        bat_power_id: str | None = None
+        bat_positive_is_charge: bool = True
+        bat_charge_id: str | None = None
+        bat_discharge_id: str | None = None
+
+        if has_battery:
+            bat_type = cfg.get(CONF_BATTERY_SENSOR_TYPE)
+            if bat_type == BATTERY_TYPE_BIDIRECTIONAL:
+                bat_power_id = cfg.get(CONF_BATTERY_POWER_ENTITY)
+                bat_positive_is_charge = (
+                    cfg.get(CONF_BATTERY_POWER_POSITIVE, BATTERY_POSITIVE_CHARGE)
+                    == BATTERY_POSITIVE_CHARGE
+                )
+            else:
+                bat_charge_id = cfg.get(CONF_BATTERY_CHARGE_ENTITY)
+                bat_discharge_id = cfg.get(CONF_BATTERY_DISCHARGE_ENTITY)
+
         statistic_ids = [prod_id, exp_id]
         if imp_id:
             statistic_ids.append(imp_id)
+
+        if has_battery:
+            if bat_power_id:
+                statistic_ids.append(bat_power_id)
+            if bat_charge_id:
+                statistic_ids.append(bat_charge_id)
+            if bat_discharge_id:
+                statistic_ids.append(bat_discharge_id)
 
         price_fallback = False
         tariff_fallback = False
@@ -202,15 +240,53 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # Same period constraint: only count import during SC hours.
             imp_in_sc_period = sum(kwh for ts, kwh in imp_deltas if ts in sc_timestamps)
 
+        # Battery: compute hourly charge/discharge, then adjust SC
+        bat_charge_hourly: list[tuple[datetime, float]] = []
+        bat_discharge_hourly: list[tuple[datetime, float]] = []
+        if has_battery:
+            if bat_type == BATTERY_TYPE_BIDIRECTIONAL and bat_power_id:
+                unit_is_kw = self._entity_unit_is_kw(bat_power_id)
+                bat_charge_hourly, bat_discharge_hourly = (
+                    compute_hourly_battery_from_power(
+                        stats.get(bat_power_id, []),
+                        bat_positive_is_charge,
+                        unit_is_kw,
+                    )
+                )
+            elif bat_charge_id and bat_discharge_id:
+                bat_charge_hourly, bat_discharge_hourly = (
+                    compute_hourly_battery_from_energy(
+                        stats.get(bat_charge_id, []),
+                        stats.get(bat_discharge_id, []),
+                    )
+                )
+
+        sc_for_savings = (
+            adjust_sc_for_battery(sc_hourly, bat_charge_hourly)
+            if has_battery
+            else sc_hourly
+        )
+
         # Savings
         hourly_savings = self._compute_savings(
-            sc_hourly,
+            sc_for_savings,
             cfg,
             stats,
             price_mode,
             price_entity,
             price_fallback,
         )
+
+        hourly_bat_discharge_savings: list[tuple[datetime, float]] = []
+        if has_battery and bat_discharge_hourly:
+            hourly_bat_discharge_savings = self._compute_savings(
+                bat_discharge_hourly,
+                cfg,
+                stats,
+                price_mode,
+                price_entity,
+                price_fallback,
+            )
 
         # Feed-in revenue
         hourly_feed_in = self._compute_feed_in(
@@ -222,7 +298,10 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             tariff_fallback,
         )
 
-        savings_eur = calculate_savings(hourly_savings)
+        savings_eur = (
+            calculate_savings(hourly_savings)
+            + calculate_savings(hourly_bat_discharge_savings)
+        )
         feed_in_eur = calculate_feed_in_revenue(hourly_feed_in)
 
         savings_all = savings_eur + historical_savings_eur
@@ -247,6 +326,13 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         live_entity_ids = [prod_id, exp_id]
         if imp_id:
             live_entity_ids.append(imp_id)
+        if has_battery:
+            if bat_power_id:
+                live_entity_ids.append(bat_power_id)
+            if bat_charge_id:
+                live_entity_ids.append(bat_charge_id)
+            if bat_discharge_id:
+                live_entity_ids.append(bat_discharge_id)
 
         live_stats = await async_get_statistics(
             self.hass, live_entity_ids, live_start, end, period="5minute"
@@ -254,6 +340,33 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         live_prod_deltas = compute_hourly_deltas(live_stats.get(prod_id, []))
         live_exp_deltas = compute_hourly_deltas(live_stats.get(exp_id, []))
         live_sc = calculate_hourly_self_consumption(live_prod_deltas, live_exp_deltas)
+
+        live_bat_charge_hourly: list[tuple[datetime, float]] = []
+        live_bat_discharge_hourly: list[tuple[datetime, float]] = []
+        if has_battery:
+            if bat_type == BATTERY_TYPE_BIDIRECTIONAL and bat_power_id:
+                unit_is_kw = self._entity_unit_is_kw(bat_power_id)
+                live_bat_charge_hourly, live_bat_discharge_hourly = (
+                    compute_hourly_battery_from_power(
+                        live_stats.get(bat_power_id, []),
+                        bat_positive_is_charge,
+                        unit_is_kw,
+                        bucket_hours=5 / 60,
+                    )
+                )
+            elif bat_charge_id and bat_discharge_id:
+                live_bat_charge_hourly, live_bat_discharge_hourly = (
+                    compute_hourly_battery_from_energy(
+                        live_stats.get(bat_charge_id, []),
+                        live_stats.get(bat_discharge_id, []),
+                    )
+                )
+
+        live_sc_for_savings = (
+            adjust_sc_for_battery(live_sc, live_bat_charge_hourly)
+            if has_battery
+            else live_sc
+        )
 
         live_sc_kwh = sum(kwh for _, kwh in live_sc)
         live_sc_timestamps = {ts for ts, _ in live_sc}
@@ -282,9 +395,12 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
 
         # ── Combined monetary (stats + live) ──────────────────────────────────
+        live_bat_discharge_eur = self._compute_live_savings_eur(
+            live_bat_discharge_hourly, cfg, price_mode, price_entity
+        ) if has_battery else 0.0
         live_savings_eur = self._compute_live_savings_eur(
-            live_sc, cfg, price_mode, price_entity
-        )
+            live_sc_for_savings, cfg, price_mode, price_entity
+        ) + live_bat_discharge_eur
         live_feed_in_eur = self._compute_live_feed_in_eur(
             live_exp_deltas, cfg, tariff_mode, tariff_entity
         )
@@ -297,11 +413,14 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             total_yield_live, installation_cost
         )
 
-        daily_yields = aggregate_daily_yields(hourly_savings, hourly_feed_in, local_tz)
+        hourly_savings_all = hourly_savings + hourly_bat_discharge_savings
+        daily_yields = aggregate_daily_yields(
+            hourly_savings_all, hourly_feed_in, local_tz
+        )
         monthly_yields = aggregate_monthly_yields(daily_yields)
         period_yields = aggregate_period_yields(daily_yields, today)
         period_savings = aggregate_period_yields(
-            aggregate_daily(hourly_savings, local_tz), today
+            aggregate_daily(hourly_savings_all, local_tz), today
         )
         period_feed_in = aggregate_period_yields(
             aggregate_daily(hourly_feed_in, local_tz), today
@@ -533,6 +652,14 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if any(sym in unit for sym in ("eur", "€", "usd", "$", "gbp", "£")):
             return 100.0
         return 1.0
+
+    def _entity_unit_is_kw(self, entity_id: str) -> bool:
+        """Return True when the entity reports in kW rather than W."""
+        state = self.hass.states.get(entity_id)
+        if not state:
+            return False
+        unit = (state.attributes.get("unit_of_measurement") or "").lower()
+        return unit == "kw"
 
     def _compute_savings(
         self,

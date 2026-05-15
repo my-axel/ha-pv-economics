@@ -37,7 +37,8 @@
           "feed_in_tariff_mode": "Einspeisevergütung-Modus",
           "electricity_price_mode": "Strompreis-Modus",
           "min_history_days": "Mindest-Historie",
-          "rolling_window_days": "Prognosefenster"
+          "rolling_window_days": "Prognosefenster",
+          "has_battery": "Batteriespeicher vorhanden"
         },
         "data_description": {
           "pv_production_entity": "Sensor, der die gesamte jemals erzeugte Energie deiner PV-Anlage misst (kWh, Zustandsklasse: total_increasing). Wird in der Regel von der Wechselrichter-Integration bereitgestellt.",
@@ -46,7 +47,34 @@
           "feed_in_tariff_mode": "Fest: Du gibst im nächsten Schritt einen fixen Wert in ct/kWh ein. Entität: Du wählst einen Sensor, dessen aktueller Wert als Vergütung verwendet wird (sinnvoll bei variablen Tarifen).",
           "electricity_price_mode": "Fest: Du gibst im nächsten Schritt einen fixen Preis in ct/kWh ein. Entität: Du wählst einen Sensor mit dem aktuellen Strompreis (z. B. Tibber, Awattar).",
           "min_history_days": "Minimale Anzahl an Tagen seit Inbetriebnahme, bevor ein Amortisationsdatum prognostiziert wird. Verhindert unzuverlässige Schätzungen bei neuen Anlagen. Standard: 60.",
-          "rolling_window_days": "Anzahl der jüngsten Tage, die zur Berechnung des durchschnittlichen Tagesertrags für die Amortisationsprognose genutzt werden. Ein längeres Fenster liefert stabilere Schätzungen. Standard: 365."
+          "rolling_window_days": "Anzahl der jüngsten Tage, die zur Berechnung des durchschnittlichen Tagesertrags für die Amortisationsprognose genutzt werden. Ein längeres Fenster liefert stabilere Schätzungen. Standard: 365.",
+          "has_battery": "Aktivieren, wenn deine PV-Anlage einen Batteriespeicher hat. In den nächsten Schritten kannst du die Batterie-Sensoren konfigurieren."
+        }
+      },
+      "battery_type": {
+        "title": "Batteriesensor-Typ",
+        "description": "Wähle, wie die Lade- und Entladedaten der Batterie in Home Assistant verfügbar sind.",
+        "data": {
+          "battery_sensor_type": "Batteriesensor-Typ"
+        },
+        "data_description": {
+          "battery_sensor_type": "Bidirektional: ein Leistungssensor (W/kW), der positiv beim Laden und negativ beim Entladen ist (oder umgekehrt). Zwei Sensoren: separate kWh-Sensoren für Laden und Entladen."
+        }
+      },
+      "battery_sensors": {
+        "title": "Batteriesensoren",
+        "description": "Wähle die Sensor(en) für Lade- und Entladedaten der Batterie.",
+        "data": {
+          "battery_power_entity": "Batterie-Leistungssensor",
+          "battery_power_positive": "Positive Werte bedeuten",
+          "battery_charge_entity": "Batterie-Ladeenergie",
+          "battery_discharge_entity": "Batterie-Entladeenergie"
+        },
+        "data_description": {
+          "battery_power_entity": "Sensor für die Batterieleistung in W oder kW. Positive oder negative Werte zeigen Laden oder Entladen an.",
+          "battery_power_positive": "Wähle, ob positive Werte des Leistungssensors Laden oder Entladen bedeuten.",
+          "battery_charge_entity": "Sensor für die gesamte in die Batterie geladene Energie (kWh, total_increasing).",
+          "battery_discharge_entity": "Sensor für die gesamte aus der Batterie entladene Energie (kWh, total_increasing)."
         }
       },
       "feed_in_tariff": {
@@ -120,7 +148,8 @@
           "electricity_price_mode": "Strompreis-Modus",
           "min_history_days": "Mindest-Historie",
           "rolling_window_days": "Prognosefenster",
-          "update_interval_minutes": "Aktualisierungsintervall"
+          "update_interval_minutes": "Aktualisierungsintervall",
+          "has_battery": "Batteriespeicher vorhanden"
         },
         "data_description": {
           "pv_production_entity": "Sensor für die gesamte erzeugte Energie (kWh, total_increasing).",
@@ -130,7 +159,34 @@
           "electricity_price_mode": "Fest: fixer Preis in ct/kWh. Entität: Sensor-basierter Preis.",
           "min_history_days": "Mindesttage seit Inbetriebnahme vor einer Amortisationsprognose. Standard: 60.",
           "rolling_window_days": "Jüngste Tage für die Amortisationsprognose. Standard: 365.",
-          "update_interval_minutes": "Wie oft alle Werte neu berechnet werden. Niedrigere Werte erhöhen die Recorder-Last."
+          "update_interval_minutes": "Wie oft alle Werte neu berechnet werden. Niedrigere Werte erhöhen die Recorder-Last.",
+          "has_battery": "Aktivieren, wenn deine PV-Anlage einen Batteriespeicher hat."
+        }
+      },
+      "battery_type": {
+        "title": "Batteriesensor-Typ",
+        "description": "Wähle, wie die Lade- und Entladedaten der Batterie in Home Assistant verfügbar sind.",
+        "data": {
+          "battery_sensor_type": "Batteriesensor-Typ"
+        },
+        "data_description": {
+          "battery_sensor_type": "Bidirektional: ein Leistungssensor (W/kW). Zwei Sensoren: separate kWh-Sensoren für Laden und Entladen."
+        }
+      },
+      "battery_sensors": {
+        "title": "Batteriesensoren",
+        "description": "Wähle die Sensor(en) für Lade- und Entladedaten der Batterie.",
+        "data": {
+          "battery_power_entity": "Batterie-Leistungssensor",
+          "battery_power_positive": "Positive Werte bedeuten",
+          "battery_charge_entity": "Batterie-Ladeenergie",
+          "battery_discharge_entity": "Batterie-Entladeenergie"
+        },
+        "data_description": {
+          "battery_power_entity": "Sensor für die Batterieleistung in W oder kW.",
+          "battery_power_positive": "Wähle, ob positive Werte Laden oder Entladen bedeuten.",
+          "battery_charge_entity": "Sensor für die gesamte in die Batterie geladene Energie (kWh, total_increasing).",
+          "battery_discharge_entity": "Sensor für die gesamte aus der Batterie entladene Energie (kWh, total_increasing)."
         }
       },
       "feed_in_tariff": {

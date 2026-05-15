@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta, timezone
 import pytest
 
 from custom_components.pv_economics.calculations import (
+    adjust_sc_for_battery,
     aggregate_daily,
     aggregate_daily_yields,
     aggregate_monthly_yields,
@@ -20,6 +21,8 @@ from custom_components.pv_economics.calculations import (
     calculate_self_consumption_rate,
     calculate_self_sufficiency,
     calculate_total_yield,
+    compute_hourly_battery_from_energy,
+    compute_hourly_battery_from_power,
     compute_hourly_deltas,
     compute_hourly_feed_in,
     compute_hourly_savings,
@@ -628,3 +631,102 @@ def test_aggregate_monthly_yields_rounding() -> None:
     yields = [(date(2024, 6, d), 1 / 3) for d in range(1, 4)]
     result = aggregate_monthly_yields(yields)
     assert result[0]["yield"] == round(1.0, 2)
+
+
+# ── Battery functions ─────────────────────────────────────────────────────────
+
+T0 = datetime(2024, 6, 1, 10, 0, tzinfo=UTC)
+T1 = datetime(2024, 6, 1, 11, 0, tzinfo=UTC)
+T2 = datetime(2024, 6, 1, 12, 0, tzinfo=UTC)
+
+
+def _power_bucket(ts: datetime, mean: float | None) -> dict:
+    return {"start": ts, "mean": mean}
+
+
+def test_compute_hourly_battery_from_power_w_positive_charge() -> None:
+    buckets = [
+        _power_bucket(T0, 500.0),   # charging 0.5 kWh
+        _power_bucket(T1, -200.0),  # discharging 0.2 kWh
+    ]
+    charge, discharge = compute_hourly_battery_from_power(buckets, positive_is_charge=True)
+    assert charge == [(T0, 0.5), (T1, 0.0)]
+    assert discharge == [(T0, 0.0), (T1, 0.2)]
+
+
+def test_compute_hourly_battery_from_power_w_positive_discharge() -> None:
+    buckets = [
+        _power_bucket(T0, 400.0),   # discharging 0.4 kWh
+        _power_bucket(T1, -300.0),  # charging 0.3 kWh
+    ]
+    charge, discharge = compute_hourly_battery_from_power(buckets, positive_is_charge=False)
+    assert charge == [(T0, 0.0), (T1, 0.3)]
+    assert discharge == [(T0, 0.4), (T1, 0.0)]
+
+
+def test_compute_hourly_battery_from_power_kw() -> None:
+    buckets = [_power_bucket(T0, 2.0)]  # 2 kW for 1 hour = 2 kWh
+    charge, discharge = compute_hourly_battery_from_power(
+        buckets, positive_is_charge=True, unit_is_kw=True
+    )
+    assert charge == [(T0, 2.0)]
+    assert discharge == [(T0, 0.0)]
+
+
+def test_compute_hourly_battery_from_power_5min_bucket() -> None:
+    buckets = [_power_bucket(T0, 1200.0)]  # 1200 W × (5/60) h = 0.1 kWh
+    charge, discharge = compute_hourly_battery_from_power(
+        buckets, positive_is_charge=True, bucket_hours=5 / 60
+    )
+    assert abs(charge[0][1] - 0.1) < 1e-9
+    assert discharge[0][1] == 0.0
+
+
+def test_compute_hourly_battery_from_power_skips_none() -> None:
+    buckets = [_power_bucket(T0, None), _power_bucket(T1, 500.0)]
+    charge, discharge = compute_hourly_battery_from_power(buckets, positive_is_charge=True)
+    assert len(charge) == 1
+    assert charge[0][0] == T1
+
+
+def test_compute_hourly_battery_from_energy() -> None:
+    charge_buckets = [
+        {"start": T0, "sum": 10.0},
+        {"start": T1, "sum": 10.5},
+        {"start": T2, "sum": 11.0},
+    ]
+    discharge_buckets = [
+        {"start": T0, "sum": 5.0},
+        {"start": T1, "sum": 5.25},
+        {"start": T2, "sum": 5.75},
+    ]
+    charge, discharge = compute_hourly_battery_from_energy(charge_buckets, discharge_buckets)
+    assert charge == [(T1, 0.5), (T2, 0.5)]
+    assert discharge == [(T1, 0.25), (T2, 0.5)]
+
+
+def test_adjust_sc_for_battery_basic() -> None:
+    sc = [(T0, 1.0), (T1, 0.75)]
+    charge = [(T0, 0.25), (T1, 0.5)]
+    result = adjust_sc_for_battery(sc, charge)
+    assert result == [(T0, 0.75), (T1, 0.25)]
+
+
+def test_adjust_sc_for_battery_clamps_to_zero() -> None:
+    sc = [(T0, 0.2)]
+    charge = [(T0, 0.5)]  # charge > sc → clamp to 0
+    result = adjust_sc_for_battery(sc, charge)
+    assert result == [(T0, 0.0)]
+
+
+def test_adjust_sc_for_battery_missing_charge_ts() -> None:
+    sc = [(T0, 1.0), (T1, 0.8)]
+    charge = [(T0, 0.3)]  # T1 missing → no subtraction
+    result = adjust_sc_for_battery(sc, charge)
+    assert result == [(T0, 0.7), (T1, 0.8)]
+
+
+def test_adjust_sc_for_battery_empty_charge() -> None:
+    sc = [(T0, 1.0)]
+    result = adjust_sc_for_battery(sc, [])
+    assert result == [(T0, 1.0)]

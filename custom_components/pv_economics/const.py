@@ -25,6 +25,18 @@ CONF_GRID_IMPORT_ENTITY = "grid_import_entity"
 CONF_ROLLING_WINDOW_DAYS = "rolling_window_days"
 CONF_UPDATE_INTERVAL_MINUTES = "update_interval_minutes"
 
+CONF_HAS_BATTERY = "has_battery"
+CONF_BATTERY_SENSOR_TYPE = "battery_sensor_type"
+CONF_BATTERY_POWER_ENTITY = "battery_power_entity"
+CONF_BATTERY_POWER_POSITIVE = "battery_power_positive"
+CONF_BATTERY_CHARGE_ENTITY = "battery_charge_entity"
+CONF_BATTERY_DISCHARGE_ENTITY = "battery_discharge_entity"
+
+BATTERY_TYPE_BIDIRECTIONAL = "bidirectional_power"
+BATTERY_TYPE_TWO_SENSORS = "two_energy"
+BATTERY_POSITIVE_CHARGE = "charge"
+BATTERY_POSITIVE_DISCHARGE = "discharge"
+
 TARIFF_MODE_FIXED = "fixed"
 TARIFF_MODE_ENTITY = "entity"
 TARIFF_MODES = [TARIFF_MODE_FIXED, TARIFF_MODE_ENTITY]
