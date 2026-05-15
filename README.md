@@ -30,7 +30,7 @@ Home Assistant integration that calculates the financial performance of a PV ins
 
 **`total_yield` also exposes `monthly_yields`**: a list of `{"month": "YYYY-MM", "yield": <EUR>}` entries for the last 13 months (including the current incomplete month), ready to use as a data source for graph cards.
 
-Out of scope: surplus management, device control, production forecasting, battery correction.
+Out of scope: surplus management, device control, production forecasting.
 
 ## Requirements
 
@@ -59,7 +59,25 @@ Setup is split into five steps:
 
 Savings and feed-in revenue earned before the tracking start date. The integration adds all future earnings on top. Leave at 0 if setting up on installation day.
 
-**Steps 3–5** — Energy sensors, feed-in tariff, electricity price (fixed ct/kWh or a dynamic entity).
+**Step 3 — Energy sensors**
+
+| Field | Description |
+|---|---|
+| PV production sensor | Total energy produced (kWh, `total_increasing`) |
+| Grid export sensor | Energy exported to the grid (kWh, `total_increasing`) |
+| Grid import sensor | Energy imported from the grid (kWh, `total_increasing`) |
+| Has battery storage | Enable if a battery is installed |
+
+**Steps 4–5 — Battery** *(only shown when "Has battery storage" is enabled)*
+
+Choose between two sensor configurations:
+
+- **Bidirectional power sensor** — a single W or kW sensor that goes positive when charging and negative when discharging (or vice versa). Select which direction is positive.
+- **Two separate energy sensors** — separate `total_increasing` kWh sensors for charge and discharge energy.
+
+Without a battery these steps are skipped entirely.
+
+**Steps 5–7** — Feed-in tariff, electricity price (fixed ct/kWh or a dynamic entity).
 
 All settings can be changed after setup via the integration's **Configure** button.
 
@@ -70,6 +88,15 @@ total_savings   = pre-tracking savings   + HA-tracked savings
 feed_in_revenue = pre-tracking feed-in   + HA-tracked feed-in
 total_yield     = total_savings + feed_in_revenue
 ```
+
+**With a battery:** self-consumption savings are corrected to avoid double-counting. Energy that goes into the battery is subtracted from self-consumption, and the battery's discharge contribution is added back separately:
+
+```
+savings = (self_consumption − battery_charge) × price
+        + battery_discharge × price
+```
+
+Round-trip losses are handled implicitly — discharge energy is always less than charge energy, so the math works out without any explicit efficiency factor.
 
 Period and projection sensors include a live supplement from 5-minute statistics, so values stay current within the last few minutes rather than waiting for the next full hour to be compiled.
 
