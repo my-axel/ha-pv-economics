@@ -333,64 +333,60 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         stats_last = sc_hourly[-1][0].date() if sc_hourly else None
         live_buckets = len(live_prod_deltas)
 
+        _LOGGER.debug("PV Economics | Energy (kWh)")
         _LOGGER.debug(
-            "PV Economics | Energy (kWh)\n"
-            "  Stats:      %s → %s  (%d complete hours)\n"
-            "  Live:       %s → now  (%d 5-min buckets)\n"
-            "  Production  stats %.3f kWh + live %.3f kWh = %.3f kWh\n"
-            "  Export      stats %.3f kWh + live %.3f kWh\n"
-            "  Self-cons.  stats %.3f kWh + live %.3f kWh = %.3f kWh  "
-            "(rate %.1f%%)\n"
-            "  Sufficiency %.1f%%  (import stats %.3f kWh + live %.3f kWh)",
-            stats_first,
-            stats_last,
-            len(sc_hourly),
-            live_start.strftime("%Y-%m-%d %H:%M"),
-            live_buckets,
-            prod_total_kwh,
-            live_prod_kwh,
-            prod_total_kwh + live_prod_kwh,
-            exp_total_kwh,
-            live_exp_kwh,
-            sc_total,
-            live_sc_kwh,
-            sc_total_live,
+            "  Stats:      %s → %s  (%d complete hours)",
+            stats_first, stats_last, len(sc_hourly),
+        )
+        _LOGGER.debug(
+            "  Live:       %s → now  (%d 5-min buckets)",
+            live_start.strftime("%Y-%m-%d %H:%M"), live_buckets,
+        )
+        _LOGGER.debug(
+            "  Production  stats %.3f kWh + live %.3f kWh = %.3f kWh",
+            prod_total_kwh, live_prod_kwh, prod_total_kwh + live_prod_kwh,
+        )
+        _LOGGER.debug(
+            "  Export      stats %.3f kWh + live %.3f kWh",
+            exp_total_kwh, live_exp_kwh,
+        )
+        _LOGGER.debug(
+            "  Self-cons.  stats %.3f kWh + live %.3f kWh = %.3f kWh  (rate %.1f%%)",
+            sc_total, live_sc_kwh, sc_total_live,
             (sc_rate_live * 100.0) if sc_rate_live is not None else 0.0,
+        )
+        _LOGGER.debug(
+            "  Sufficiency %.1f%%  (import stats %.3f kWh + live %.3f kWh)",
             (sc_sufficiency_live * 100.0) if sc_sufficiency_live is not None else 0.0,
-            imp_total_kwh,
-            live_imp_kwh,
+            imp_total_kwh, live_imp_kwh,
         )
 
         price_desc = self._price_description(price_mode, price_entity, price_fallback, cfg)
         tariff_desc = self._price_description(tariff_mode, tariff_entity, tariff_fallback, cfg, is_tariff=True)
+        _LOGGER.debug("PV Economics | Monetary")
+        _LOGGER.debug("  Price:      %s", price_desc)
+        _LOGGER.debug("  Tariff:     %s", tariff_desc)
         _LOGGER.debug(
-            "PV Economics | Monetary\n"
-            "  Price:      %s\n"
-            "  Tariff:     %s\n"
-            "  Savings     stats %.2f + hist %.2f + live %.2f = %.2f EUR\n"
-            "  Feed-in     stats %.2f + hist %.2f + live %.2f = %.2f EUR\n"
-            "  Total yield %.2f EUR  net %.2f EUR  progress %.1f%%\n"
-            "  Today       savings %.2f  feed-in %.2f  yield %.2f EUR\n"
-            "  This week   %.2f EUR  month %.2f EUR  year %.2f EUR",
-            price_desc,
-            tariff_desc,
-            savings_eur,
-            historical_savings_eur,
-            live_savings_eur,
-            savings_all_live,
-            feed_in_eur,
-            historical_feed_in_eur,
-            live_feed_in_eur,
-            feed_in_all_live,
+            "  Savings     stats %.2f + hist %.2f + live %.2f = %.2f EUR",
+            savings_eur, historical_savings_eur, live_savings_eur, savings_all_live,
+        )
+        _LOGGER.debug(
+            "  Feed-in     stats %.2f + hist %.2f + live %.2f = %.2f EUR",
+            feed_in_eur, historical_feed_in_eur, live_feed_in_eur, feed_in_all_live,
+        )
+        _LOGGER.debug(
+            "  Total yield %.2f EUR  net %.2f EUR  progress %.1f%%",
             total_yield_live,
             total_yield_live - installation_cost,
             (progress_pct_live * 100.0) if progress_pct_live is not None else 0.0,
-            period_savings["today"],
-            period_feed_in["today"],
-            period_yields["today"],
-            period_yields["this_week"],
-            period_yields["this_month"],
-            period_yields["this_year"],
+        )
+        _LOGGER.debug(
+            "  Today       savings %.2f  feed-in %.2f  yield %.2f EUR",
+            period_savings["today"], period_feed_in["today"], period_yields["today"],
+        )
+        _LOGGER.debug(
+            "  This week   %.2f EUR  month %.2f EUR  year %.2f EUR",
+            period_yields["this_week"], period_yields["this_month"], period_yields["this_year"],
         )
 
         return {
