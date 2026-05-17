@@ -1,13 +1,39 @@
-site_name: PV Economics
+site_name: HA PV Economics
 site_description: Home Assistant integration for PV financial performance tracking
 site_url: https://ha-pv-economics.readthedocs.io
 repo_url: https://github.com/axelbenjamins/ha-pv-economics
 repo_name: axelbenjamins/ha-pv-economics
+copyright: Copyright &copy; Axel Benjamins
 
 theme:
   name: material
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
 
 nav:
   - Home: index.md
-
-docs_dir: docs
+  - Installation: installation.md
+  - Configuration: configuration.md
+  - Sensors: sensors.md
+  - Development: development.md

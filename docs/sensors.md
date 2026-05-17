@@ -1,22 +1,6 @@
-# HA PV Economics
+# Sensors
 
-[![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
-
-Home Assistant integration that calculates the financial performance of a PV installation. Reads energy data from HA long-term statistics — no cloud, no external dependencies.
-
-## Features
-
-- Tracks savings, feed-in revenue, and total yield since commissioning
-- Projects amortization date based on rolling average daily yield
-- Period sensors (today / this week / this month / this year)
-- Optional battery storage support with round-trip loss correction
-- Monthly yield data attribute ready for graph cards
-
-## Out of scope
-
-Surplus management, device control, and production forecasting are not covered.
-
-## Sensors
+## Overview
 
 | Sensor | Description |
 |---|---|
@@ -38,62 +22,13 @@ Surplus management, device control, and production forecasting are not covered.
 | Yield / Savings / Feed-in this year | Period totals for the current year |
 | Is amortized | Binary sensor — true when total yield ≥ installation cost |
 
-**Attributes on projection sensors** (`amortization_date`, `days_to_amortization`, `average_daily_yield`): `data_days` shows how many days of statistics the calculation is based on. `amortization_date` also exposes `time_left` (e.g. `"12y 5m 3d"`).
+## Notable attributes
 
-**`total_yield` also exposes `monthly_yields`**: a list of `{"month": "YYYY-MM", "yield": <EUR>}` entries for the last 13 months (including the current incomplete month), ready to use as a data source for graph cards.
+**Projection sensors** (`amortization_date`, `days_to_amortization`, `average_daily_yield`) expose a `data_days` attribute showing how many days of statistics the calculation is based on. `amortization_date` also exposes `time_left` (e.g. `"12y 5m 3d"`).
 
-Out of scope: surplus management, device control, production forecasting.
+**`total_yield`** exposes `monthly_yields`: a list of `{"month": "YYYY-MM", "yield": <EUR>}` entries for the last 13 months (including the current incomplete month), ready to use as a data source for graph cards.
 
-## Requirements
-
-- Home Assistant 2024.10+
-- Energy sensors with long-term statistics (`total_increasing`)
-
-## Installation
-
-1. Add this repository to HACS as a custom repository
-2. Install **PV Economics** and restart Home Assistant
-3. Add the integration via **Settings → Devices & Services**
-
-## Configuration
-
-Setup is split into five steps:
-
-**Step 1 — Installation costs**
-
-| Field | Description |
-|---|---|
-| Installation cost | Total cost of the PV system |
-| Commissioning date | Date the system was first switched on |
-| Tracking start date | Date from which HA statistics are read |
-
-**Step 2 — Pre-tracking totals** *(optional, both default to 0)*
-
-Savings and feed-in revenue earned before the tracking start date. The integration adds all future earnings on top. Leave at 0 if setting up on installation day.
-
-**Step 3 — Energy sensors**
-
-| Field | Description |
-|---|---|
-| PV production sensor | Total energy produced (kWh, `total_increasing`) |
-| Grid export sensor | Energy exported to the grid (kWh, `total_increasing`) |
-| Grid import sensor | Energy imported from the grid (kWh, `total_increasing`) |
-| Has battery storage | Enable if a battery is installed |
-
-**Steps 4–5 — Battery** *(only shown when "Has battery storage" is enabled)*
-
-Choose between two sensor configurations:
-
-- **Bidirectional power sensor** — a single W or kW sensor that goes positive when charging and negative when discharging (or vice versa). Select which direction is positive.
-- **Two separate energy sensors** — separate `total_increasing` kWh sensors for charge and discharge energy.
-
-Without a battery these steps are skipped entirely.
-
-**Steps 5–7** — Feed-in tariff, electricity price (fixed ct/kWh or a dynamic entity).
-
-All settings can be changed after setup via the integration's **Configure** button.
-
-## How it works
+## How calculations work
 
 ```
 total_savings   = pre-tracking savings   + HA-tracked savings
@@ -166,15 +101,3 @@ cards:
             return [new Date(y, mo - 1, 1).getTime(), m.yield];
           });
 ```
-
-## Development
-
-```bash
-uv pip install homeassistant pytest pytest-asyncio
-.venv/bin/python -m pytest
-.venv/bin/ruff check custom_components/pv_economics/
-```
-
----
-
-*Built with [Claude Code](https://claude.ai/code) and [Codex](https://openai.com/codex).*
