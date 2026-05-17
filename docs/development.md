@@ -3,10 +3,11 @@
 ## Setup
 
 ```bash
+uv venv
 uv pip install homeassistant pytest pytest-asyncio
 ```
 
-## Running tests
+## Tests
 
 ```bash
 .venv/bin/python -m pytest

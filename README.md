@@ -2,166 +2,55 @@
 
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
 
-Home Assistant integration that calculates the financial performance of a PV installation. Reads energy data from HA long-term statistics — no cloud, no external dependencies.
+Home Assistant integration for tracking the financial return of a solar installation. Reads energy data directly from HA long-term statistics — no cloud, no external dependencies.
+
+## What it does
+
+- Calculates savings (avoided electricity cost) and feed-in revenue since commissioning
+- Projects the amortization date based on a configurable rolling yield average
+- Period sensors for today, this week, this month, and this year
+- Optional battery storage support with round-trip loss correction
+- Monthly yield attribute ready for use with graph cards
+
+## Requirements
+
+- Home Assistant 2024.10+
+- PV production and grid export sensors with long-term statistics (`state_class: total_increasing`)
+
+## Installation
+
+**Via HACS (recommended)**
+
+1. Add this repository to HACS as a custom repository
+2. Install **PV Economics** and restart Home Assistant
+3. Go to **Settings → Devices & Services** and add the integration
+
+**Manual**
+
+Copy `custom_components/pv_economics/` into your HA `custom_components` directory, restart, then add via **Settings → Devices & Services**.
 
 ## Sensors
 
 | Sensor | Description |
 |---|---|
-| Self-consumption | Total kWh consumed directly from PV |
-| Self-consumption rate | Self-consumption / total production |
-| Self-sufficiency | Self-consumption / (self-consumption + grid import) |
+| Self-consumption | kWh consumed directly from PV |
+| Self-consumption rate | Self-consumption ÷ total production |
+| Self-sufficiency | Self-consumption ÷ (self-consumption + grid import) |
 | Total savings | Avoided electricity costs since commissioning |
 | Feed-in revenue | Grid export earnings since commissioning |
 | Total yield | Savings + feed-in revenue |
 | Net yield | Total yield − installation cost |
 | Amortization progress | Total yield as % of installation cost |
-| Amortization date | Historical break-even date, or projected future date |
+| Amortization date | Break-even date — historical or projected |
 | Days to amortization | Days remaining until break-even |
-| Average daily yield | Rolling average EUR/day (basis for projection) |
+| Average daily yield | Rolling average (default: 365-day window) |
 | System age | Days since commissioning date |
-| Yield / Savings / Feed-in today | Period totals for the current day |
-| Yield / Savings / Feed-in this week | Period totals for the current ISO week |
-| Yield / Savings / Feed-in this month | Period totals for the current month |
-| Yield / Savings / Feed-in this year | Period totals for the current year |
-| Is amortized | Binary sensor — true when total yield ≥ installation cost |
+| Yield / Savings / Feed-in — today / this week / this month / this year | Period totals |
+| Is amortized | Binary sensor, true when total yield ≥ installation cost |
 
-**Attributes on projection sensors** (`amortization_date`, `days_to_amortization`, `average_daily_yield`): `data_days` shows how many days of statistics the calculation is based on. `amortization_date` also exposes `time_left` (e.g. `"12y 5m 3d"`).
+## Documentation
 
-**`total_yield` also exposes `monthly_yields`**: a list of `{"month": "YYYY-MM", "yield": <EUR>}` entries for the last 13 months (including the current incomplete month), ready to use as a data source for graph cards.
-
-Out of scope: surplus management, device control, production forecasting.
-
-## Requirements
-
-- Home Assistant 2024.10+
-- Energy sensors with long-term statistics (`total_increasing`)
-
-## Installation
-
-1. Add this repository to HACS as a custom repository
-2. Install **PV Economics** and restart Home Assistant
-3. Add the integration via **Settings → Devices & Services**
-
-## Configuration
-
-Setup is split into five steps:
-
-**Step 1 — Installation costs**
-
-| Field | Description |
-|---|---|
-| Installation cost | Total cost of the PV system |
-| Commissioning date | Date the system was first switched on |
-| Tracking start date | Date from which HA statistics are read |
-
-**Step 2 — Pre-tracking totals** *(optional, both default to 0)*
-
-Savings and feed-in revenue earned before the tracking start date. The integration adds all future earnings on top. Leave at 0 if setting up on installation day.
-
-**Step 3 — Energy sensors**
-
-| Field | Description |
-|---|---|
-| PV production sensor | Total energy produced (kWh, `total_increasing`) |
-| Grid export sensor | Energy exported to the grid (kWh, `total_increasing`) |
-| Grid import sensor | Energy imported from the grid (kWh, `total_increasing`) |
-| Has battery storage | Enable if a battery is installed |
-
-**Steps 4–5 — Battery** *(only shown when "Has battery storage" is enabled)*
-
-Choose between two sensor configurations:
-
-- **Bidirectional power sensor** — a single W or kW sensor that goes positive when charging and negative when discharging (or vice versa). Select which direction is positive.
-- **Two separate energy sensors** — separate `total_increasing` kWh sensors for charge and discharge energy.
-
-Without a battery these steps are skipped entirely.
-
-**Steps 5–7** — Feed-in tariff, electricity price (fixed ct/kWh or a dynamic entity).
-
-All settings can be changed after setup via the integration's **Configure** button.
-
-## How it works
-
-```
-total_savings   = pre-tracking savings   + HA-tracked savings
-feed_in_revenue = pre-tracking feed-in   + HA-tracked feed-in
-total_yield     = total_savings + feed_in_revenue
-```
-
-**With a battery:** self-consumption savings are corrected to avoid double-counting. Energy that goes into the battery is subtracted from self-consumption, and the battery's discharge contribution is added back separately:
-
-```
-savings = (self_consumption − battery_charge) × price
-        + battery_discharge × price
-```
-
-Round-trip losses are handled implicitly — discharge energy is always less than charge energy, so the math works out without any explicit efficiency factor.
-
-Period and projection sensors include a live supplement from 5-minute statistics, so values stay current within the last few minutes rather than waiting for the next full hour to be compiled.
-
-## Example Dashboard
-
-The following Lovelace YAML gives a compact amortization overview. It requires [apexcharts-card](https://github.com/RomRider/apexcharts-card) (available via HACS). Replace `pv_economics` entity IDs with your actual entity IDs if you renamed the integration entry.
-
-```yaml
-type: vertical-stack
-cards:
-  # ── Progress gauge ────────────────────────────────────────────────────────
-  - type: gauge
-    entity: sensor.pv_economics_amortization_progress
-    name: Amortisation
-    min: 0
-    max: 100
-    needle: true
-    severity:
-      green: 75
-      yellow: 40
-      red: 0
-
-  # ── Key metrics ───────────────────────────────────────────────────────────
-  - type: entities
-    entities:
-      - entity: sensor.pv_economics_total_yield
-        name: Gesamtertrag
-      - entity: sensor.pv_economics_net_yield
-        name: Nettoertrag
-      - entity: sensor.pv_economics_amortization_date
-        name: Amortisationsdatum
-      - entity: sensor.pv_economics_days_to_amortization
-        name: Noch
-      - entity: sensor.pv_economics_average_daily_yield
-        name: Ø Tagesertrag
-
-  # ── Monthly yield bar chart ───────────────────────────────────────────────
-  - type: custom:apexcharts-card
-    header:
-      show: true
-      title: Monatliche Erträge
-    chart_type: line
-    apex_config:
-      xaxis:
-        type: datetime
-        labels:
-          format: MMM yy
-    series:
-      - entity: sensor.pv_economics_total_yield
-        name: Ertrag
-        color: var(--energy-solar-color, "#FF9800")
-        data_generator: |
-          return entity.attributes.monthly_yields.map(m => {
-            const [y, mo] = m.month.split('-').map(Number);
-            return [new Date(y, mo - 1, 1).getTime(), m.yield];
-          });
-```
-
-## Development
-
-```bash
-uv pip install homeassistant pytest pytest-asyncio
-.venv/bin/python -m pytest
-.venv/bin/ruff check custom_components/pv_economics/
-```
+Full documentation including configuration walkthrough and dashboard examples: [ha-pv-economics.readthedocs.io](https://ha-pv-economics.readthedocs.io)
 
 ---
 
