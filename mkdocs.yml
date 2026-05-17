@@ -1,8 +1,8 @@
 site_name: HA PV Economics
 site_description: Home Assistant integration for PV financial performance tracking
 site_url: https://ha-pv-economics.readthedocs.io
-repo_url: https://github.com/axelbenjamins/ha-pv-economics
-repo_name: axelbenjamins/ha-pv-economics
+repo_url: https://github.com/my-axel/ha-pv-economics
+repo_name: my-axel/ha-pv-economics
 copyright: Copyright &copy; Axel Benjamins
 
 theme:
