@@ -422,6 +422,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             hourly_savings_all, hourly_feed_in, local_tz
         )
         monthly_yields = aggregate_monthly_yields(daily_yields)
+        monthly_yields_seasonal = aggregate_monthly_yields(daily_yields, n_months=36)
         period_yields = aggregate_period_yields(daily_yields, today)
         period_savings = aggregate_period_yields(
             aggregate_daily(hourly_savings_all, local_tz), today
@@ -448,13 +449,13 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         avg_daily = calculate_average_daily_yield(daily_yields, rolling_window_days)
 
         monthly_vs_expected = calculate_monthly_performance_vs_expected(
-            monthly_yields_history=monthly_yields,
+            monthly_yields_history=monthly_yields_seasonal,
             yield_this_month=period_yields["this_month"],
             today=today,
         )
 
         projected_this_year = calculate_projected_yield_this_year(
-            monthly_yields_history=monthly_yields,
+            monthly_yields_history=monthly_yields_seasonal,
             yield_this_year=period_yields["this_year"],
             avg_daily_yield=avg_daily,
             today=today,

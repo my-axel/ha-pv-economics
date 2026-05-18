@@ -198,6 +198,7 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         value_key=VALUE_MONTHLY_PERFORMANCE_VS_EXPECTED,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=1,
     ),
     PVEconomicsSensorEntityDescription(
         key=VALUE_PROJECTED_YIELD_THIS_YEAR,
@@ -205,6 +206,7 @@ SENSOR_DESCRIPTIONS: tuple[PVEconomicsSensorEntityDescription, ...] = (
         value_key=VALUE_PROJECTED_YIELD_THIS_YEAR,
         state_class=SensorStateClass.MEASUREMENT,
         unit_fn=_currency_unit,
+        suggested_display_precision=2,
     ),
     PVEconomicsSensorEntityDescription(
         key=VALUE_SYSTEM_AGE_DAYS,
