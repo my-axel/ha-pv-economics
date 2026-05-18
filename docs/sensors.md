@@ -20,6 +20,8 @@
 | Yield / Savings / Feed-in — this week | € | Totals for the current ISO week (Mon–Sun) |
 | Yield / Savings / Feed-in — this month | € | Totals for the current calendar month |
 | Yield / Savings / Feed-in — this year | € | Totals for the current calendar year |
+| Monthly performance vs. expected | % | This month's yield vs. seasonal expectation, prorated to days elapsed. Requires 12 complete calendar months of history. |
+| Projected yield this year | € | Year-to-date yield plus a seasonal forecast for remaining months. Falls back to a flat daily-average projection when fewer than 12 complete calendar months of history are available. |
 | Is amortized | — | Binary sensor, true when total yield ≥ installation cost |
 
 ## Sensor attributes

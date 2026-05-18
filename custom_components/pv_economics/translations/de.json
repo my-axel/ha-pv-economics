@@ -288,6 +288,12 @@
       },
       "feed_in_this_year": {
         "name": "Einspeiseerlös dieses Jahr"
+      },
+      "monthly_performance_vs_expected": {
+        "name": "Monatsleistung vs. Erwartung"
+      },
+      "projected_yield_this_year": {
+        "name": "Projizierter Jahresertrag"
       }
     },
     "binary_sensor": {

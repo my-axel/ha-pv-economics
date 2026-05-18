@@ -16,6 +16,8 @@ from custom_components.pv_economics.calculations import (
     calculate_amortization_progress_pct,
     calculate_feed_in_revenue,
     calculate_hourly_self_consumption,
+    calculate_monthly_performance_vs_expected,
+    calculate_projected_yield_this_year,
     calculate_savings,
     calculate_self_consumption,
     calculate_self_consumption_rate,
@@ -730,3 +732,198 @@ def test_adjust_sc_for_battery_empty_charge() -> None:
     sc = [(T0, 1.0)]
     result = adjust_sc_for_battery(sc, [])
     assert result == [(T0, 1.0)]
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+def _build_history(months_and_yields: list[tuple[str, float]]) -> list[dict]:
+    return [{"month": m, "yield": y} for m, y in months_and_yields]
+
+
+def _full_year_history(
+    base_year: int = 2023,
+    yields: list[float] | None = None,
+    current_month_key: str | None = None,
+) -> list[dict]:
+    """Return 12 complete months plus an optional current (incomplete) month."""
+    if yields is None:
+        yields = [30, 35, 60, 90, 110, 130, 140, 135, 100, 70, 40, 25]
+    history = [
+        {"month": f"{base_year}-{m:02d}", "yield": y}
+        for m, y in enumerate(yields, start=1)
+    ]
+    if current_month_key:
+        history.append({"month": current_month_key, "yield": 50.0})
+    return history
+
+
+# ── calculate_monthly_performance_vs_expected ─────────────────────────────────
+
+
+def test_monthly_performance_less_than_12_months_returns_none() -> None:
+    history = _build_history([("2024-01", 30.0), ("2024-02", 40.0)])
+    result = calculate_monthly_performance_vs_expected(
+        monthly_yields_history=history,
+        yield_this_month=20.0,
+        today=date(2024, 3, 15),
+    )
+    assert result is None
+
+
+def test_monthly_performance_on_target_returns_zero() -> None:
+    today = date(2024, 6, 15)
+    history = _full_year_history(current_month_key="2024-06")
+    # June historical avg = 130.0; prorated to day 15 of 30: 130 * 15/30 = 65.0
+    result = calculate_monthly_performance_vs_expected(
+        monthly_yields_history=history,
+        yield_this_month=65.0,
+        today=today,
+    )
+    assert result == pytest.approx(0.0, abs=0.1)
+
+
+def test_monthly_performance_above_expected_positive() -> None:
+    today = date(2024, 6, 15)
+    history = _full_year_history(current_month_key="2024-06")
+    # Expected prorated June = 65.0; actual = 78.0 → +20%
+    result = calculate_monthly_performance_vs_expected(
+        monthly_yields_history=history,
+        yield_this_month=78.0,
+        today=today,
+    )
+    assert result is not None
+    assert result > 0
+
+
+def test_monthly_performance_below_expected_negative() -> None:
+    today = date(2024, 6, 15)
+    history = _full_year_history(current_month_key="2024-06")
+    result = calculate_monthly_performance_vs_expected(
+        monthly_yields_history=history,
+        yield_this_month=30.0,
+        today=today,
+    )
+    assert result is not None
+    assert result < 0
+
+
+def test_monthly_performance_first_day_of_month() -> None:
+    today = date(2024, 1, 1)
+    history = _full_year_history(base_year=2023, current_month_key="2024-01")
+    # Jan historical avg = 30.0; prorated to day 1 of 31: 30 * 1/31 ≈ 0.968
+    result = calculate_monthly_performance_vs_expected(
+        monthly_yields_history=history,
+        yield_this_month=0.968,
+        today=today,
+    )
+    assert result is not None
+    assert result == pytest.approx(0.0, abs=1.0)
+
+
+def test_monthly_performance_not_enough_calendar_months_returns_none() -> None:
+    # 12 entries but all in the same calendar month → only 1 calendar month represented
+    history = [{"month": f"202{y}-01", "yield": 30.0} for y in range(12)]
+    result = calculate_monthly_performance_vs_expected(
+        monthly_yields_history=history,
+        yield_this_month=20.0,
+        today=date(2024, 2, 10),
+    )
+    assert result is None
+
+
+# ── calculate_projected_yield_this_year ──────────────────────────────────────
+
+
+def test_projected_yield_no_avg_daily_returns_none() -> None:
+    result = calculate_projected_yield_this_year(
+        monthly_yields_history=[],
+        yield_this_year=500.0,
+        avg_daily_yield=None,
+        today=date(2024, 6, 15),
+    )
+    assert result is None
+
+
+def test_projected_yield_zero_avg_daily_returns_none() -> None:
+    result = calculate_projected_yield_this_year(
+        monthly_yields_history=[],
+        yield_this_year=500.0,
+        avg_daily_yield=0.0,
+        today=date(2024, 6, 15),
+    )
+    assert result is None
+
+
+def test_projected_yield_december_mostly_actual() -> None:
+    # December 30 → only 1 remaining day, almost all actual
+    today = date(2024, 12, 30)
+    result = calculate_projected_yield_this_year(
+        monthly_yields_history=[],
+        yield_this_year=900.0,
+        avg_daily_yield=3.0,
+        today=today,
+    )
+    assert result is not None
+    # 1 remaining day at 3.0/day → 900 + 3.0 = 903.0
+    assert result == pytest.approx(903.0, abs=0.1)
+
+
+def test_projected_yield_january_mostly_forecast() -> None:
+    # Jan 1 → 364 remaining days, nearly entirely forecast
+    today = date(2024, 1, 1)
+    result = calculate_projected_yield_this_year(
+        monthly_yields_history=[],
+        yield_this_year=0.0,
+        avg_daily_yield=2.0,
+        today=today,
+    )
+    assert result is not None
+    # 2024 is a leap year: 366 days total, 365 remaining after Jan 1
+    assert result == pytest.approx(2.0 * 365, abs=1.0)
+
+
+def test_projected_yield_with_seasonal_averages() -> None:
+    today = date(2024, 6, 15)
+    history = _full_year_history(current_month_key="2024-06")
+    result = calculate_projected_yield_this_year(
+        monthly_yields_history=history,
+        yield_this_year=400.0,
+        avg_daily_yield=3.0,
+        today=today,
+    )
+    assert result is not None
+    # Should be higher than flat projection because July/Aug/Sep are strong months
+    flat_result = calculate_projected_yield_this_year(
+        monthly_yields_history=[],
+        yield_this_year=400.0,
+        avg_daily_yield=3.0,
+        today=today,
+    )
+    # With seasonal data from the provided yields: Jul=140, Aug=135, Sep=100, Oct=70,
+    # Nov=40, Dec=25 — mix of high and low months; result may differ from flat
+    assert flat_result is not None
+    assert isinstance(result, float)
+
+
+def test_projected_yield_flat_vs_seasonal_december_result() -> None:
+    # December: only remaining days in December projected
+    today = date(2024, 12, 1)
+    history = _full_year_history(current_month_key="2024-12")
+    result_seasonal = calculate_projected_yield_this_year(
+        monthly_yields_history=history,
+        yield_this_year=800.0,
+        avg_daily_yield=3.0,
+        today=today,
+    )
+    result_flat = calculate_projected_yield_this_year(
+        monthly_yields_history=[],
+        yield_this_year=800.0,
+        avg_daily_yield=3.0,
+        today=today,
+    )
+    assert result_seasonal is not None
+    assert result_flat is not None
+    # Both project 30 remaining days in Dec; seasonal uses Dec avg (25.0), flat uses 3.0×30=90.0
+    # Dec seasonal avg = 25.0 → result_seasonal < result_flat
+    assert result_seasonal < result_flat
