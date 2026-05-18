@@ -381,3 +381,94 @@ def calculate_amortization_date(
         # Projection lands past year 9999 — too far out to be meaningful.
         return None
     return date.fromordinal(target_ordinal)
+
+
+def _seasonal_monthly_averages(
+    monthly_yields_history: list[dict[str, Any]],
+    today: date,
+) -> dict[int, float] | None:
+    """Return per-calendar-month average yield (1=Jan … 12=Dec → EUR).
+
+    Returns None when fewer than 12 complete months of history are available,
+    or when not all 12 calendar months are represented.
+    The current (incomplete) month is excluded from the calculation.
+    """
+    current_key = f"{today.year}-{today.month:02d}"
+    complete = [e for e in monthly_yields_history if e["month"] != current_key]
+    if len(complete) < 12:
+        return None
+
+    month_totals: dict[int, list[float]] = defaultdict(list)
+    for e in complete:
+        month_num = int(e["month"].split("-")[1])
+        month_totals[month_num].append(e["yield"])
+
+    if len(month_totals) < 12:
+        return None
+
+    return {m: sum(vals) / len(vals) for m, vals in month_totals.items()}
+
+
+def calculate_monthly_performance_vs_expected(
+    monthly_yields_history: list[dict[str, Any]],
+    yield_this_month: float,
+    today: date,
+) -> float | None:
+    """Return this month's yield deviation vs. seasonal expectation (%).
+
+    Prorates the expected full-month yield to the number of days elapsed so the
+    comparison is fair mid-month. Returns None when fewer than 12 complete months
+    of history are available or the expected value is zero.
+    """
+    seasonal_avgs = _seasonal_monthly_averages(monthly_yields_history, today)
+    if seasonal_avgs is None:
+        return None
+
+    expected_full_month = seasonal_avgs.get(today.month, 0.0)
+    if expected_full_month <= 0:
+        return None
+
+    days_in_month = monthrange(today.year, today.month)[1]
+    expected_prorated = expected_full_month * (today.day / days_in_month)
+    if expected_prorated <= 0:
+        return None
+
+    return round((yield_this_month - expected_prorated) / expected_prorated * 100, 1)
+
+
+def calculate_projected_yield_this_year(
+    monthly_yields_history: list[dict[str, Any]],
+    yield_this_year: float,
+    avg_daily_yield: float | None,
+    today: date,
+) -> float | None:
+    """Return projected total yield for the current calendar year.
+
+    Combines actual year-to-date yield with a seasonal forecast for remaining
+    days and months. Falls back to a flat avg_daily_yield projection when fewer
+    than 12 complete months of history are available. Returns None when
+    avg_daily_yield is unavailable or <= 0.
+    """
+    if not avg_daily_yield or avg_daily_yield <= 0:
+        return None
+
+    seasonal_avgs = _seasonal_monthly_averages(monthly_yields_history, today)
+    total = yield_this_year
+
+    # Remaining days in the current month (today itself is already in YTD)
+    days_in_current_month = monthrange(today.year, today.month)[1]
+    remaining_days_this_month = days_in_current_month - today.day
+    if seasonal_avgs:
+        daily_rate_this_month = seasonal_avgs[today.month] / days_in_current_month
+    else:
+        daily_rate_this_month = avg_daily_yield
+    total += daily_rate_this_month * remaining_days_this_month
+
+    # Complete future months (month+1 … December)
+    for future_month in range(today.month + 1, 13):
+        if seasonal_avgs:
+            total += seasonal_avgs[future_month]
+        else:
+            total += avg_daily_yield * monthrange(today.year, future_month)[1]
+
+    return round(total, 2)

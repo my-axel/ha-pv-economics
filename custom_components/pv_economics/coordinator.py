@@ -22,6 +22,8 @@ from .calculations import (
     calculate_average_daily_yield,
     calculate_feed_in_revenue,
     calculate_hourly_self_consumption,
+    calculate_monthly_performance_vs_expected,
+    calculate_projected_yield_this_year,
     calculate_savings,
     calculate_self_consumption,
     calculate_self_consumption_rate,
@@ -85,6 +87,8 @@ from .const import (
     VALUE_SYSTEM_AGE_DAYS,
     VALUE_TOTAL_SAVINGS,
     VALUE_TOTAL_YIELD,
+    VALUE_MONTHLY_PERFORMANCE_VS_EXPECTED,
+    VALUE_PROJECTED_YIELD_THIS_YEAR,
     VALUE_YIELD_THIS_MONTH,
     VALUE_YIELD_THIS_WEEK,
     VALUE_YIELD_THIS_YEAR,
@@ -443,6 +447,19 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         avg_daily = calculate_average_daily_yield(daily_yields, rolling_window_days)
 
+        monthly_vs_expected = calculate_monthly_performance_vs_expected(
+            monthly_yields_history=monthly_yields,
+            yield_this_month=period_yields["this_month"],
+            today=today,
+        )
+
+        projected_this_year = calculate_projected_yield_this_year(
+            monthly_yields_history=monthly_yields,
+            yield_this_year=period_yields["this_year"],
+            avg_daily_yield=avg_daily,
+            today=today,
+        )
+
         days_to_amort: int | None = None
         if amort_date is not None:
             days_to_amort = max(0, (amort_date - today).days)
@@ -554,6 +571,8 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             VALUE_AVERAGE_DAILY_YIELD: (
                 round(avg_daily, 2) if avg_daily is not None else None
             ),
+            VALUE_MONTHLY_PERFORMANCE_VS_EXPECTED: monthly_vs_expected,
+            VALUE_PROJECTED_YIELD_THIS_YEAR: projected_this_year,
             VALUE_IS_AMORTIZED: total_yield_live >= installation_cost,
             VALUE_YIELD_TODAY: round(period_yields["today"], 2),
             VALUE_YIELD_THIS_WEEK: round(period_yields["this_week"], 2),
