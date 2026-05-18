@@ -36,7 +36,6 @@
           "grid_import_entity": "Grid import",
           "feed_in_tariff_mode": "Feed-in tariff mode",
           "electricity_price_mode": "Electricity price mode",
-          "min_history_days": "Minimum history",
           "rolling_window_days": "Projection window",
           "has_battery": "Battery storage connected"
         },
@@ -46,7 +45,6 @@
           "grid_import_entity": "Optional. Sensor measuring total energy drawn from the grid (kWh, total_increasing). Only required for the self-sufficiency sensor.",
           "feed_in_tariff_mode": "Fixed: you enter a static rate in ct/kWh on the next screen. Entity: you select a sensor whose current value is used as the tariff (useful for variable tariffs).",
           "electricity_price_mode": "Fixed: you enter a static price in ct/kWh on the next screen. Entity: you select a sensor whose value is used as the price (e.g. Tibber, Awattar).",
-          "min_history_days": "Minimum number of days since commissioning before a break-even date is projected. Prevents unreliable estimates when the system is brand new. Default: 60.",
           "rolling_window_days": "How many recent days are used to calculate the average daily yield for projecting the break-even date. A longer window gives a smoother estimate. Default: 365.",
           "has_battery": "Enable if your PV system includes a battery. Additional steps will allow you to configure the battery sensors."
         }
@@ -146,7 +144,6 @@
           "grid_import_entity": "Grid import",
           "feed_in_tariff_mode": "Feed-in tariff mode",
           "electricity_price_mode": "Electricity price mode",
-          "min_history_days": "Minimum history",
           "rolling_window_days": "Projection window",
           "update_interval_minutes": "Update interval",
           "has_battery": "Battery storage connected"
@@ -157,7 +154,6 @@
           "grid_import_entity": "Optional. Required for the self-sufficiency sensor.",
           "feed_in_tariff_mode": "Fixed: static rate in ct/kWh. Entity: sensor-based tariff.",
           "electricity_price_mode": "Fixed: static price in ct/kWh. Entity: sensor-based price.",
-          "min_history_days": "Minimum days since commissioning before a break-even date is projected. Default: 60.",
           "rolling_window_days": "Recent days used for the break-even projection. Default: 365.",
           "update_interval_minutes": "How often the integration recalculates all values. Lower values increase recorder load.",
           "has_battery": "Enable if your PV system includes a battery."

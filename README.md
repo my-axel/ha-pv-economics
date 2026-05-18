@@ -9,6 +9,7 @@ Home Assistant integration for tracking the financial return of a solar installa
 - Calculates savings (avoided electricity cost) and feed-in revenue since commissioning
 - Projects the amortization date based on a configurable rolling yield average
 - Period sensors for today, this week, this month, and this year
+- Seasonal sensors: monthly performance vs. expectation and projected annual yield
 - Optional battery storage support with round-trip loss correction
 - Monthly yield attribute ready for use with graph cards
 
@@ -46,6 +47,8 @@ Copy `custom_components/pv_economics/` into your HA `custom_components` director
 | Average daily yield | Rolling average (default: 365-day window) |
 | System age | Days since commissioning date |
 | Yield / Savings / Feed-in — today / this week / this month / this year | Period totals |
+| Monthly performance vs. expected | This month's yield vs. seasonal expectation (requires 12 months of history) |
+| Projected yield this year | Year-to-date plus seasonal forecast for remaining months |
 | Is amortized | Binary sensor, true when total yield ≥ installation cost |
 
 ## Documentation

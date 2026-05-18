@@ -9,6 +9,7 @@ Home Assistant integration for tracking the financial return of a solar installa
 - Calculates savings (avoided electricity cost) and feed-in revenue since commissioning
 - Projects the amortization date based on a configurable rolling yield average
 - Period sensors for today, this week, this month, and this year
+- Seasonal sensors: monthly performance vs. expectation and projected annual yield
 - Optional battery storage support with round-trip loss correction
 - Monthly yield attribute ready for use with graph cards
 

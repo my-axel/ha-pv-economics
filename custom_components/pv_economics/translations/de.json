@@ -36,7 +36,6 @@
           "grid_import_entity": "Netzbezug",
           "feed_in_tariff_mode": "Einspeisevergütung-Modus",
           "electricity_price_mode": "Strompreis-Modus",
-          "min_history_days": "Mindest-Historie",
           "rolling_window_days": "Prognosefenster",
           "has_battery": "Batteriespeicher vorhanden"
         },
@@ -46,7 +45,6 @@
           "grid_import_entity": "Optional. Sensor für den gesamten Netzbezug (kWh, total_increasing). Nur für den Autarkiegrad-Sensor erforderlich.",
           "feed_in_tariff_mode": "Fest: Du gibst im nächsten Schritt einen fixen Wert in ct/kWh ein. Entität: Du wählst einen Sensor, dessen aktueller Wert als Vergütung verwendet wird (sinnvoll bei variablen Tarifen).",
           "electricity_price_mode": "Fest: Du gibst im nächsten Schritt einen fixen Preis in ct/kWh ein. Entität: Du wählst einen Sensor mit dem aktuellen Strompreis (z. B. Tibber, Awattar).",
-          "min_history_days": "Minimale Anzahl an Tagen seit Inbetriebnahme, bevor ein Amortisationsdatum prognostiziert wird. Verhindert unzuverlässige Schätzungen bei neuen Anlagen. Standard: 60.",
           "rolling_window_days": "Anzahl der jüngsten Tage, die zur Berechnung des durchschnittlichen Tagesertrags für die Amortisationsprognose genutzt werden. Ein längeres Fenster liefert stabilere Schätzungen. Standard: 365.",
           "has_battery": "Aktivieren, wenn deine PV-Anlage einen Batteriespeicher hat. In den nächsten Schritten kannst du die Batterie-Sensoren konfigurieren."
         }
@@ -146,7 +144,6 @@
           "grid_import_entity": "Netzbezug",
           "feed_in_tariff_mode": "Einspeisevergütung-Modus",
           "electricity_price_mode": "Strompreis-Modus",
-          "min_history_days": "Mindest-Historie",
           "rolling_window_days": "Prognosefenster",
           "update_interval_minutes": "Aktualisierungsintervall",
           "has_battery": "Batteriespeicher vorhanden"
@@ -157,7 +154,6 @@
           "grid_import_entity": "Optional. Nur für den Autarkiegrad-Sensor erforderlich.",
           "feed_in_tariff_mode": "Fest: fixer Wert in ct/kWh. Entität: Sensor-basierter Tarif.",
           "electricity_price_mode": "Fest: fixer Preis in ct/kWh. Entität: Sensor-basierter Preis.",
-          "min_history_days": "Mindesttage seit Inbetriebnahme vor einer Amortisationsprognose. Standard: 60.",
           "rolling_window_days": "Jüngste Tage für die Amortisationsprognose. Standard: 365.",
           "update_interval_minutes": "Wie oft alle Werte neu berechnet werden. Niedrigere Werte erhöhen die Recorder-Last.",
           "has_battery": "Aktivieren, wenn deine PV-Anlage einen Batteriespeicher hat."
