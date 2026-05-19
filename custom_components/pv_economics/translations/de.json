@@ -223,6 +223,16 @@
       "entity_not_numeric": "Das Gerät liefert keinen numerischen Wert — kann nicht als Preisquelle verwendet werden."
     }
   },
+  "issues": {
+    "price_entity_no_statistics": {
+      "title": "Strompreis-Entität hat keine Langzeitstatistiken",
+      "description": "Die Entität `{entity_id}` wird als Strompreisquelle verwendet, hat aber keine Langzeitstatistiken. Die Integration verwendet stattdessen den aktuellen Zustand der Entität für alle Berechnungen. Aktiviere Langzeitstatistiken für diese Entität, um die Genauigkeit zu verbessern."
+    },
+    "tariff_entity_no_statistics": {
+      "title": "Einspeisevergütungs-Entität hat keine Langzeitstatistiken",
+      "description": "Die Entität `{entity_id}` wird als Einspeisevergütungsquelle verwendet, hat aber keine Langzeitstatistiken. Die Integration verwendet stattdessen den aktuellen Zustand der Entität für alle Berechnungen. Aktiviere Langzeitstatistiken für diese Entität, um die Genauigkeit zu verbessern."
+    }
+  },
   "entity": {
     "sensor": {
       "self_consumption": {

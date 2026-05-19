@@ -223,6 +223,16 @@
       "entity_not_numeric": "Entity does not return a numeric value — cannot use as price source."
     }
   },
+  "issues": {
+    "price_entity_no_statistics": {
+      "title": "Electricity price entity has no long-term statistics",
+      "description": "The entity `{entity_id}` is used as the electricity price source, but has no long-term statistics. The integration is falling back to the entity's current state for all calculations. Enable long-term statistics for this entity to improve accuracy."
+    },
+    "tariff_entity_no_statistics": {
+      "title": "Feed-in tariff entity has no long-term statistics",
+      "description": "The entity `{entity_id}` is used as the feed-in tariff source, but has no long-term statistics. The integration is falling back to the entity's current state for all calculations. Enable long-term statistics for this entity to improve accuracy."
+    }
+  },
   "entity": {
     "sensor": {
       "self_consumption": {

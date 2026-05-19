@@ -76,7 +76,9 @@ from .const import (
     VALUE_FEED_IN_THIS_YEAR,
     VALUE_FEED_IN_TODAY,
     VALUE_IS_AMORTIZED,
+    VALUE_MONTHLY_PERFORMANCE_VS_EXPECTED,
     VALUE_NET_YIELD,
+    VALUE_PROJECTED_YIELD_THIS_YEAR,
     VALUE_SAVINGS_THIS_MONTH,
     VALUE_SAVINGS_THIS_WEEK,
     VALUE_SAVINGS_THIS_YEAR,
@@ -87,13 +89,12 @@ from .const import (
     VALUE_SYSTEM_AGE_DAYS,
     VALUE_TOTAL_SAVINGS,
     VALUE_TOTAL_YIELD,
-    VALUE_MONTHLY_PERFORMANCE_VS_EXPECTED,
-    VALUE_PROJECTED_YIELD_THIS_YEAR,
     VALUE_YIELD_THIS_MONTH,
     VALUE_YIELD_THIS_WEEK,
     VALUE_YIELD_THIS_YEAR,
     VALUE_YIELD_TODAY,
 )
+from .repairs import async_handle_fallback_repairs
 from .statistics import async_get_statistics, async_has_statistics
 
 _LOGGER = logging.getLogger(__name__)
@@ -547,6 +548,13 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             period_yields["this_week"], period_yields["this_month"], period_yields["this_year"],
         )
 
+        async_handle_fallback_repairs(
+            self.hass,
+            price_entity=price_entity,
+            tariff_entity=tariff_entity,
+            price_fallback=price_fallback,
+            tariff_fallback=tariff_fallback,
+        )
         return {
             VALUE_SELF_CONSUMPTION: round(sc_total_live, 3),
             VALUE_SELF_CONSUMPTION_RATE: (
