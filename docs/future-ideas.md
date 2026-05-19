@@ -1,76 +1,64 @@
 # Future Ideas
 
-This page collects possible additions to PV Economics after 1.0. Nothing here is committed or scheduled — it's a transparent look at what might come next.
+A loose collection of things that might be interesting to add someday. None of this is planned or scheduled — just ideas worth writing down. If something here matters to you, feel free to open an issue.
 
-**Scope stays Economics.** No forecasts, no device control, no external cloud dependencies. Every idea here fits the existing coordinator / sensor model.
+The scope will stay **Economics**: no forecasts, no device control, no external cloud services.
 
 ---
 
-## High value, low effort
-
-These ideas build directly on data the coordinator already computes and would each add a useful sensor or attribute with minimal complexity.
+## Possible additions
 
 **Year-over-year comparison**
-A sensor showing yield this year vs. the same period last year (%). Becomes meaningful from the second year of operation and directly answers the most common user question: "Is my system performing well?"
+A sensor showing yield this year vs. the same period last year (%). Gets interesting from the second year of operation onward.
 
 **Self-consumption value (€/kWh)**
-`total_savings ÷ self_consumption_kWh`. Makes it immediately clear why self-consumption is more valuable than grid export — the "aha moment" for new users.
+`total_savings ÷ self_consumption_kWh` — makes it tangible why consuming your own solar power is worth more than exporting it.
 
 **Current price / tariff as sensors**
-When using entity mode for electricity price or feed-in tariff, expose the current ct/kWh value as a sensor. Makes dynamic-tariff setups (Tibber, Awattar, etc.) easier to display on dashboards and simplifies debugging without having to dig into logs.
+When using entity mode for electricity price or feed-in tariff, expose the current ct/kWh value as a dedicated sensor. Useful for dynamic-tariff setups (Tibber, Awattar, etc.) and makes the live value available on dashboards.
 
-**Best / worst month attributes on `total_yield`**
-Derived from the existing `monthly_yields` attribute. Adds ready-made values like "best month: July 2024 — €187.42" so users don't need custom templates for dashboard highlights.
+**Best / worst month on `total_yield`**
+Ready-made "best month: July 2024 — €187.42" attributes so users don't have to build custom templates for dashboard highlights.
 
 **Battery round-trip efficiency**
-Rolling-window ratio of `sum(discharge) / sum(charge)`. Only shown when battery storage is configured. A metric most battery owners care about but rarely have a clean, ongoing measurement for.
+Rolling ratio of discharge to charge energy. A metric battery owners care about but rarely have a clean, continuous measurement for.
 
 **Annual ROI (%)**
-`yearly_yield ÷ installation_cost × 100`. A standard financial metric that's easier to communicate ("7.3% annual return") than an abstract amortization date.
+`yearly_yield ÷ installation_cost × 100`. Sometimes easier to communicate than an amortization date.
 
 **Yearly performance vs. expected**
-Same algorithm as the existing monthly performance sensor, aggregated to the full year. Small addition since the seasonality calculation is already in place.
-
----
-
-## UX and robustness
+Same idea as the existing monthly performance sensor, but for the full year.
 
 **`reconfigure` flow**
-Home Assistant's modern UI shows a dedicated "Reconfigure" entry alongside "Configure". Reconfigure is the right place for structural changes like swapping entity IDs, while Options handles tuning like update intervals. The logic is mostly shared with the existing options flow.
+Home Assistant shows a dedicated "Reconfigure" entry in the UI for structural changes like swapping entity IDs, separate from the Options flow used for tuning settings.
 
 **Action: `update_historical_totals`**
-A targeted action to adjust the pre-tracking savings and feed-in totals without navigating the full five-step options flow. Useful when an old electricity bill turns up with a more accurate figure.
+A quick way to adjust pre-tracking savings and feed-in totals without going through the full setup wizard — handy when an old electricity bill turns up.
 
-**Auto-default `commissioning_date` from statistics**
-If a user doesn't know their commissioning date during setup, default to the earliest date with data in the PV production entity's long-term statistics. Reduces setup friction for existing installations.
+**Auto-detect `commissioning_date`**
+If a user doesn't know their commissioning date, default to the earliest date with data in the PV production sensor's long-term statistics.
 
-**Repair issues for source entities**
-Currently `repairs.py` raises a visible repair issue when price/tariff statistics are missing. The same pattern applied to `pv_production_entity` and `grid_export_entity`: if they lose their long-term statistics or are deleted, the user sees a repair notification instead of silent zeros.
+**Repair notifications for source entities**
+If the configured production or export sensor disappears or loses its long-term statistics, surface that as a visible Home Assistant repair issue rather than silent zeros.
 
 **Attributes on `is_amortized`**
-The binary sensor currently has no attributes. Mirroring `time_left`, `amortization_date`, and `progress_pct` onto it would make it self-contained as a single dashboard entity.
-
----
-
-## Larger additions (only if there's real demand)
-
-These are useful but touch the data model more deeply. Worth doing only if users actually ask for them.
+The binary sensor has no attributes today. Adding `time_left`, `amortization_date`, and `progress_pct` to it would make it useful as a standalone dashboard element.
 
 **Multi-instance support**
-Today the integration blocks a second config entry. For users with two installations (e.g. home + holiday house) this would be valuable. Requires changing the unique-ID strategy and writing a migration for existing entries.
+For users with two separate installations, a second config entry.
 
 **Two-rate tariff (peak / off-peak) in fixed mode**
-Day/night rates or simple EV charging tariffs. Targeted at users with a classic two-rate electricity meter who don't need (or want) dynamic entity-based pricing. Users with real-time pricing already use entity mode.
+Day/night rates for users with a classic two-rate meter who don't need real-time pricing.
 
 **Multiple investment tranches with dates**
-Battery added later, module expansion — today only a single total investment amount is supported. A list of `(amount, date)` tranches would make amortization tracking more honest for upgraded systems. Touches `calculate_amortization_date` and needs documentation.
+For systems that were extended later (battery added, more panels) — a list of investments with dates rather than a single total amount.
 
 ---
 
 ## Deliberately out of scope
 
 - **PV forecasts, degradation tracking, load control** — outside the economics focus
-- **CSV / Excel export** — Home Assistant's built-in statistics cards and recorder backups already cover this
-- **Gamification** (trees planted, CO₂ offset badges) — not the target audience
-- **Loan / interest modelling in net yield** — would turn a lightweight integration into a financial planning app
+- **CSV / Excel export** — Home Assistant's built-in statistics and recorder already cover this
+- **Gamification** (trees planted, offset badges) — not the target audience
+- **Loan / interest modelling** — would turn a lightweight integration into a financial planning tool
 - **`pv_economics.recalculate` action** — `homeassistant.update_entity` already does this
