@@ -26,9 +26,24 @@
 
 ## Sensor attributes
 
+**`total_savings` and `feed_in_revenue`** expose:
+
+| Attribute | Description |
+|---|---|
+| `from_statistics` | Amount tracked by HA statistics (excludes pre-tracking offset) |
+| `historical_offset` | Pre-tracking total entered during setup |
+| `statistics_fallback` | `true` when the price/tariff entity has no long-term statistics and the current state is used as a fallback |
+
 **Projection sensors** (`amortization_date`, `days_to_amortization`, `average_daily_yield`) expose a `data_days` attribute — the number of days of statistics the calculation is based on. `amortization_date` additionally exposes `time_left` as a human-readable string (e.g. `"12y 5m 3d"`).
 
-**`total_yield`** exposes `monthly_yields`: a list of `{"month": "YYYY-MM", "yield": <float>}` entries covering the last 13 months including the current incomplete month. Use this as a data source for bar/line chart cards.
+**`total_yield`** exposes:
+
+| Attribute | Description |
+|---|---|
+| `monthly_yields` | List of `{"month": "YYYY-MM", "yield": <float>}` entries for the last 13 months including the current incomplete month. Use as a data source for bar/line chart cards. |
+| `statistics_from` | Date of the first hourly statistics bucket used in calculations |
+| `statistics_until` | Date of the last hourly statistics bucket used in calculations |
+| `data_hours` | Number of complete hourly buckets used |
 
 ## How calculations work
 
