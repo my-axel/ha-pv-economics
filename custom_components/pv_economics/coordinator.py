@@ -630,8 +630,8 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _FEED_IN_FROM_STATS_KEY: round(feed_in_eur, 2),
             _HIST_SAVINGS_KEY: round(historical_savings_eur, 2),
             _HIST_FEED_IN_KEY: round(historical_feed_in_eur, 2),
-            _STATS_FIRST_DATE_KEY: stats_first,
-            _STATS_LAST_DATE_KEY: stats_last,
+            _STATS_FIRST_DATE_KEY: stats_first.isoformat() if stats_first else None,
+            _STATS_LAST_DATE_KEY: stats_last.isoformat() if stats_last else None,
             _STATS_HOURS_KEY: len(sc_hourly),
             _DATA_DAYS_KEY: len(daily_yields),
             _AMORT_TIME_LEFT_KEY: (
