@@ -101,7 +101,12 @@
       }
     },
     "error": {
-      "unknown": "Unexpected error"
+      "unknown": "Unexpected error",
+      "installation_cost_zero": "Installation cost must be greater than zero for amortization tracking.",
+      "statistics_before_commissioning": "Tracking start date cannot be before the commissioning date.",
+      "duplicate_entity": "This entity is already assigned to another measurement.",
+      "entity_not_available": "Entity state is unknown or unavailable — cannot use as price source.",
+      "entity_not_numeric": "Entity does not return a numeric value — cannot use as price source."
     },
     "abort": {
       "already_configured": "PV Economics is already configured"
@@ -209,6 +214,13 @@
           "electricity_price_entity": "Sensor providing the current electricity price in ct/kWh. Should have long-term statistics enabled."
         }
       }
+    },
+    "error": {
+      "installation_cost_zero": "Installation cost must be greater than zero for amortization tracking.",
+      "statistics_before_commissioning": "Tracking start date cannot be before the commissioning date.",
+      "duplicate_entity": "This entity is already assigned to another measurement.",
+      "entity_not_available": "Entity state is unknown or unavailable — cannot use as price source.",
+      "entity_not_numeric": "Entity does not return a numeric value — cannot use as price source."
     }
   },
   "entity": {

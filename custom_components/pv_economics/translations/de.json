@@ -101,7 +101,12 @@
       }
     },
     "error": {
-      "unknown": "Unerwarteter Fehler"
+      "unknown": "Unerwarteter Fehler",
+      "installation_cost_zero": "Installationskosten müssen größer als null sein, damit die Amortisation berechnet werden kann.",
+      "statistics_before_commissioning": "Das Tracking-Startdatum darf nicht vor dem Inbetriebnahmedatum liegen.",
+      "duplicate_entity": "Dieses Gerät ist bereits einer anderen Messung zugeordnet.",
+      "entity_not_available": "Der Zustand des Geräts ist unbekannt oder nicht verfügbar — kann nicht als Preisquelle verwendet werden.",
+      "entity_not_numeric": "Das Gerät liefert keinen numerischen Wert — kann nicht als Preisquelle verwendet werden."
     },
     "abort": {
       "already_configured": "PV Economics ist bereits konfiguriert"
@@ -209,6 +214,13 @@
           "electricity_price_entity": "Sensor mit dem aktuellen Strompreis in ct/kWh. Sollte Langzeitstatistiken aktiviert haben."
         }
       }
+    },
+    "error": {
+      "installation_cost_zero": "Installationskosten müssen größer als null sein, damit die Amortisation berechnet werden kann.",
+      "statistics_before_commissioning": "Das Tracking-Startdatum darf nicht vor dem Inbetriebnahmedatum liegen.",
+      "duplicate_entity": "Dieses Gerät ist bereits einer anderen Messung zugeordnet.",
+      "entity_not_available": "Der Zustand des Geräts ist unbekannt oder nicht verfügbar — kann nicht als Preisquelle verwendet werden.",
+      "entity_not_numeric": "Das Gerät liefert keinen numerischen Wert — kann nicht als Preisquelle verwendet werden."
     }
   },
   "entity": {

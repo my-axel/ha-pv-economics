@@ -68,6 +68,61 @@ from .const import (
 _MISSING = object()
 
 
+def _validate_costs(data: dict[str, Any]) -> dict[str, str]:
+    errors: dict[str, str] = {}
+    if float(data.get(CONF_INSTALLATION_COST, 0)) <= 0:
+        errors[CONF_INSTALLATION_COST] = "installation_cost_zero"
+    start = data.get(CONF_STATISTICS_START_DATE)
+    commissioning = data.get(CONF_COMMISSIONING_DATE)
+    if start and commissioning and (
+        date.fromisoformat(start) < date.fromisoformat(commissioning)
+    ):
+        errors[CONF_STATISTICS_START_DATE] = "statistics_before_commissioning"
+    return errors
+
+
+def _validate_entities(data: dict[str, Any]) -> dict[str, str]:
+    errors: dict[str, str] = {}
+    if data.get(CONF_PV_PRODUCTION_ENTITY) == data.get(CONF_GRID_EXPORT_ENTITY):
+        errors[CONF_GRID_EXPORT_ENTITY] = "duplicate_entity"
+    return errors
+
+
+def _validate_battery_sensors(
+    data: dict[str, Any], saved: dict[str, Any]
+) -> dict[str, str]:
+    production = saved.get(CONF_PV_PRODUCTION_ENTITY)
+    export = saved.get(CONF_GRID_EXPORT_ENTITY)
+    errors: dict[str, str] = {}
+    if saved.get(CONF_BATTERY_SENSOR_TYPE) == BATTERY_TYPE_BIDIRECTIONAL:
+        if data.get(CONF_BATTERY_POWER_ENTITY) in (production, export):
+            errors[CONF_BATTERY_POWER_ENTITY] = "duplicate_entity"
+    else:
+        for key in (CONF_BATTERY_CHARGE_ENTITY, CONF_BATTERY_DISCHARGE_ENTITY):
+            if data.get(key) in (production, export):
+                errors[key] = "duplicate_entity"
+        if (
+            not errors
+            and data.get(CONF_BATTERY_CHARGE_ENTITY) is not None
+            and data.get(CONF_BATTERY_CHARGE_ENTITY)
+            == data.get(CONF_BATTERY_DISCHARGE_ENTITY)
+        ):
+            errors[CONF_BATTERY_DISCHARGE_ENTITY] = "duplicate_entity"
+    return errors
+
+
+def _validate_tariff_entity(entity_id: str, hass: Any) -> str | None:
+    """Return an error key if the entity is not usable as a price source, else None."""
+    state = hass.states.get(entity_id)
+    if state is None or state.state in ("unknown", "unavailable"):
+        return "entity_not_available"
+    try:
+        float(state.state)
+    except ValueError:
+        return "entity_not_numeric"
+    return None
+
+
 def _number_selector(
     *,
     min_value: float | None = None,
@@ -300,8 +355,15 @@ class PVEconomicsConfigFlow(ConfigFlow, domain=DOMAIN):
             self._data[CONF_STATISTICS_START_DATE] = date.today().isoformat()
 
         if user_input is not None:
-            self._data.update(user_input)
-            return await self.async_step_history()
+            errors = _validate_costs(user_input)
+            if not errors:
+                self._data.update(user_input)
+                return await self.async_step_history()
+            return self.async_show_form(
+                step_id="user",
+                data_schema=_costs_schema(self._data | user_input),
+                errors=errors,
+            )
 
         return self.async_show_form(
             step_id="user",
@@ -328,6 +390,13 @@ class PVEconomicsConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Step 3: Energy sensors, pricing modes, and projection settings."""
         if user_input is not None:
+            errors = _validate_entities(user_input)
+            if errors:
+                return self.async_show_form(
+                    step_id="entities",
+                    data_schema=_entities_schema(self._data | user_input),
+                    errors=errors,
+                )
             self._data.update(user_input)
             if user_input.get(CONF_HAS_BATTERY):
                 return await self.async_step_battery_type()
@@ -373,7 +442,17 @@ class PVEconomicsConfigFlow(ConfigFlow, domain=DOMAIN):
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
         """Step 3c: Battery sensor entity selection."""
+        sensor_type = self._data.get(CONF_BATTERY_SENSOR_TYPE, BATTERY_TYPE_TWO_SENSORS)
         if user_input is not None:
+            errors = _validate_battery_sensors(user_input, self._data)
+            if errors:
+                return self.async_show_form(
+                    step_id="battery_sensors",
+                    data_schema=self._battery_sensors_schema(
+                        sensor_type, self._data | user_input
+                    ),
+                    errors=errors,
+                )
             self._data.update(user_input)
             # Clear stale keys for whichever sensor type was NOT chosen
             if self._data.get(CONF_BATTERY_SENSOR_TYPE) == BATTERY_TYPE_BIDIRECTIONAL:
@@ -384,34 +463,35 @@ class PVEconomicsConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._data.pop(CONF_BATTERY_POWER_POSITIVE, None)
             return await self.async_step_feed_in_tariff()
 
-        sensor_type = self._data.get(CONF_BATTERY_SENSOR_TYPE, BATTERY_TYPE_TWO_SENSORS)
+        return self.async_show_form(
+            step_id="battery_sensors",
+            data_schema=self._battery_sensors_schema(sensor_type, self._data),
+        )
+
+    @staticmethod
+    def _battery_sensors_schema(
+        sensor_type: str, defaults: dict[str, Any]
+    ) -> vol.Schema:
         if sensor_type == BATTERY_TYPE_BIDIRECTIONAL:
-            schema = vol.Schema(
+            return vol.Schema(
                 {
                     _required_key(
-                        CONF_BATTERY_POWER_ENTITY, self._data
+                        CONF_BATTERY_POWER_ENTITY, defaults
                     ): _entity_selector(),
                     _required_key(
-                        CONF_BATTERY_POWER_POSITIVE,
-                        self._data,
-                        BATTERY_POSITIVE_CHARGE,
+                        CONF_BATTERY_POWER_POSITIVE, defaults, BATTERY_POSITIVE_CHARGE
                     ): _battery_positive_selector(),
                 }
             )
-        else:
-            schema = vol.Schema(
-                {
-                    _required_key(
-                        CONF_BATTERY_CHARGE_ENTITY, self._data
-                    ): _energy_entity_selector(),
-                    _required_key(
-                        CONF_BATTERY_DISCHARGE_ENTITY, self._data
-                    ): _energy_entity_selector(),
-                }
-            )
-        return self.async_show_form(
-            step_id="battery_sensors",
-            data_schema=schema,
+        return vol.Schema(
+            {
+                _required_key(
+                    CONF_BATTERY_CHARGE_ENTITY, defaults
+                ): _energy_entity_selector(),
+                _required_key(
+                    CONF_BATTERY_DISCHARGE_ENTITY, defaults
+                ): _energy_entity_selector(),
+            }
         )
 
     async def async_step_feed_in_tariff(
@@ -419,11 +499,21 @@ class PVEconomicsConfigFlow(ConfigFlow, domain=DOMAIN):
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
         """Step 4: Feed-in tariff details."""
+        mode = self._data.get(CONF_FEED_IN_TARIFF_MODE, TARIFF_MODE_FIXED)
         if user_input is not None:
+            if mode == TARIFF_MODE_ENTITY:
+                err = _validate_tariff_entity(
+                    user_input[CONF_FEED_IN_TARIFF_ENTITY], self.hass
+                )
+                if err:
+                    return self.async_show_form(
+                        step_id="feed_in_tariff",
+                        data_schema=_feed_in_schema(self._data | user_input, mode),
+                        errors={CONF_FEED_IN_TARIFF_ENTITY: err},
+                    )
             self._data.update(user_input)
             return await self.async_step_electricity_price()
 
-        mode = self._data.get(CONF_FEED_IN_TARIFF_MODE, TARIFF_MODE_FIXED)
         return self.async_show_form(
             step_id="feed_in_tariff",
             data_schema=_feed_in_schema(self._data, mode),
@@ -434,11 +524,24 @@ class PVEconomicsConfigFlow(ConfigFlow, domain=DOMAIN):
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
         """Step 5: Electricity price details."""
+        mode = self._data.get(CONF_ELECTRICITY_PRICE_MODE, TARIFF_MODE_FIXED)
         if user_input is not None:
+            if mode == TARIFF_MODE_ENTITY:
+                err = _validate_tariff_entity(
+                    user_input[CONF_ELECTRICITY_PRICE_ENTITY], self.hass
+                )
+                if err:
+                    return self.async_show_form(
+                        step_id="electricity_price",
+                        data_schema=_electricity_price_schema(
+                            self._data | user_input, mode
+                        ),
+                        errors={CONF_ELECTRICITY_PRICE_ENTITY: err},
+                        description_placeholders={"statistics_note": _STATISTICS_NOTE},
+                    )
             self._data.update(user_input)
             return self.async_create_entry(title="PV Economics", data=self._data)
 
-        mode = self._data.get(CONF_ELECTRICITY_PRICE_MODE, TARIFF_MODE_FIXED)
         return self.async_show_form(
             step_id="electricity_price",
             data_schema=_electricity_price_schema(self._data, mode),
@@ -460,10 +563,17 @@ class PVEconomicsOptionsFlow(OptionsFlow):
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Step 1: Edit installation cost, commissioning date, and tracking start date."""
+        """Step 1: Edit installation cost, commissioning date, tracking start date."""
         if user_input is not None:
-            self._data.update(user_input)
-            return await self.async_step_history()
+            errors = _validate_costs(user_input)
+            if not errors:
+                self._data.update(user_input)
+                return await self.async_step_history()
+            return self.async_show_form(
+                step_id="init",
+                data_schema=_costs_schema(self._data | user_input),
+                errors=errors,
+            )
 
         return self.async_show_form(
             step_id="init",
@@ -490,6 +600,22 @@ class PVEconomicsOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         """Step 3: Edit energy sensors, pricing modes, and settings."""
         if user_input is not None:
+            errors = _validate_entities(user_input)
+            if errors:
+                schema = _entities_schema(self._data | user_input).extend(
+                    {
+                        _optional_key(
+                            CONF_UPDATE_INTERVAL_MINUTES,
+                            self._data | user_input,
+                            DEFAULT_UPDATE_INTERVAL_MINUTES,
+                        ): _number_selector(min_value=1, unit="min")
+                    }
+                )
+                return self.async_show_form(
+                    step_id="entities",
+                    data_schema=schema,
+                    errors=errors,
+                )
             self._data.update(user_input)
             if user_input.get(CONF_HAS_BATTERY):
                 return await self.async_step_battery_type()
@@ -544,7 +670,17 @@ class PVEconomicsOptionsFlow(OptionsFlow):
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
         """Step 3c: Battery sensor entity selection."""
+        sensor_type = self._data.get(CONF_BATTERY_SENSOR_TYPE, BATTERY_TYPE_TWO_SENSORS)
         if user_input is not None:
+            errors = _validate_battery_sensors(user_input, self._data)
+            if errors:
+                return self.async_show_form(
+                    step_id="battery_sensors",
+                    data_schema=PVEconomicsConfigFlow._battery_sensors_schema(
+                        sensor_type, self._data | user_input
+                    ),
+                    errors=errors,
+                )
             self._data.update(user_input)
             # Clear stale keys for whichever sensor type was NOT chosen
             if self._data.get(CONF_BATTERY_SENSOR_TYPE) == BATTERY_TYPE_BIDIRECTIONAL:
@@ -555,34 +691,11 @@ class PVEconomicsOptionsFlow(OptionsFlow):
                 self._data.pop(CONF_BATTERY_POWER_POSITIVE, None)
             return await self.async_step_feed_in_tariff()
 
-        sensor_type = self._data.get(CONF_BATTERY_SENSOR_TYPE, BATTERY_TYPE_TWO_SENSORS)
-        if sensor_type == BATTERY_TYPE_BIDIRECTIONAL:
-            schema = vol.Schema(
-                {
-                    _required_key(
-                        CONF_BATTERY_POWER_ENTITY, self._data
-                    ): _entity_selector(),
-                    _required_key(
-                        CONF_BATTERY_POWER_POSITIVE,
-                        self._data,
-                        BATTERY_POSITIVE_CHARGE,
-                    ): _battery_positive_selector(),
-                }
-            )
-        else:
-            schema = vol.Schema(
-                {
-                    _required_key(
-                        CONF_BATTERY_CHARGE_ENTITY, self._data
-                    ): _energy_entity_selector(),
-                    _required_key(
-                        CONF_BATTERY_DISCHARGE_ENTITY, self._data
-                    ): _energy_entity_selector(),
-                }
-            )
         return self.async_show_form(
             step_id="battery_sensors",
-            data_schema=schema,
+            data_schema=PVEconomicsConfigFlow._battery_sensors_schema(
+                sensor_type, self._data
+            ),
         )
 
     async def async_step_feed_in_tariff(
@@ -590,11 +703,21 @@ class PVEconomicsOptionsFlow(OptionsFlow):
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
         """Step 4: Edit feed-in tariff details."""
+        mode = self._data.get(CONF_FEED_IN_TARIFF_MODE, TARIFF_MODE_FIXED)
         if user_input is not None:
+            if mode == TARIFF_MODE_ENTITY:
+                err = _validate_tariff_entity(
+                    user_input[CONF_FEED_IN_TARIFF_ENTITY], self.hass
+                )
+                if err:
+                    return self.async_show_form(
+                        step_id="feed_in_tariff",
+                        data_schema=_feed_in_schema(self._data | user_input, mode),
+                        errors={CONF_FEED_IN_TARIFF_ENTITY: err},
+                    )
             self._data.update(user_input)
             return await self.async_step_electricity_price()
 
-        mode = self._data.get(CONF_FEED_IN_TARIFF_MODE, TARIFF_MODE_FIXED)
         return self.async_show_form(
             step_id="feed_in_tariff",
             data_schema=_feed_in_schema(self._data, mode),
@@ -605,11 +728,24 @@ class PVEconomicsOptionsFlow(OptionsFlow):
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
         """Step 5: Edit electricity price details."""
+        mode = self._data.get(CONF_ELECTRICITY_PRICE_MODE, TARIFF_MODE_FIXED)
         if user_input is not None:
+            if mode == TARIFF_MODE_ENTITY:
+                err = _validate_tariff_entity(
+                    user_input[CONF_ELECTRICITY_PRICE_ENTITY], self.hass
+                )
+                if err:
+                    return self.async_show_form(
+                        step_id="electricity_price",
+                        data_schema=_electricity_price_schema(
+                            self._data | user_input, mode
+                        ),
+                        errors={CONF_ELECTRICITY_PRICE_ENTITY: err},
+                        description_placeholders={"statistics_note": _STATISTICS_NOTE},
+                    )
             self._data.update(user_input)
             return self.async_create_entry(title="", data=self._data)
 
-        mode = self._data.get(CONF_ELECTRICITY_PRICE_MODE, TARIFF_MODE_FIXED)
         return self.async_show_form(
             step_id="electricity_price",
             data_schema=_electricity_price_schema(self._data, mode),
