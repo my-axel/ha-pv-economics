@@ -38,5 +38,6 @@ module = [
     "custom_components.pv_economics.coordinator",
     "custom_components.pv_economics.sensor",
     "custom_components.pv_economics.binary_sensor",
+    "custom_components.pv_economics.statistics",
 ]
 ignore_errors = true
