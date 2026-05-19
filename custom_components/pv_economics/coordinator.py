@@ -8,7 +8,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
 from .calculations import (
@@ -135,6 +135,16 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch statistics and compute PV economics data."""
+        try:
+            return await self._update()
+        except UpdateFailed:
+            raise
+        except Exception as exc:
+            msg = f"Unexpected error updating PV Economics data: {exc}"
+            raise UpdateFailed(msg) from exc
+
+    async def _update(self) -> dict[str, Any]:
+        """Inner update — called by _async_update_data which wraps exceptions."""
         cfg = {**self.config_entry.data, **self.config_entry.options}
 
         commissioning_date = date.fromisoformat(cfg[CONF_COMMISSIONING_DATE])
@@ -158,6 +168,13 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         prod_id: str = cfg[CONF_PV_PRODUCTION_ENTITY]
         exp_id: str = cfg[CONF_GRID_EXPORT_ENTITY]
         imp_id: str | None = cfg.get(CONF_GRID_IMPORT_ENTITY)
+
+        for entity_id, label in ((prod_id, "PV production"), (exp_id, "Grid export")):
+            if self.hass.states.get(entity_id) is None:
+                raise UpdateFailed(
+                    f"{label} entity '{entity_id}' not found; "
+                    "check integration configuration."
+                )
 
         price_mode: str = cfg[CONF_ELECTRICITY_PRICE_MODE]
         tariff_mode: str = cfg[CONF_FEED_IN_TARIFF_MODE]
@@ -221,7 +238,9 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             else:
                 statistic_ids.append(tariff_entity)
 
-        stats = await async_get_statistics(self.hass, statistic_ids, start, end, period="hour")
+        stats = await async_get_statistics(
+            self.hass, statistic_ids, start, end, period="hour"
+        )
 
         prod_deltas = compute_hourly_deltas(stats.get(prod_id, []))
         exp_deltas = compute_hourly_deltas(stats.get(exp_id, []))
@@ -375,7 +394,9 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         live_sc_kwh = sum(kwh for _, kwh in live_sc)
         live_sc_timestamps = {ts for ts, _ in live_sc}
-        live_prod_in_sc = sum(kwh for ts, kwh in live_prod_deltas if ts in live_sc_timestamps)
+        live_prod_in_sc = sum(
+            kwh for ts, kwh in live_prod_deltas if ts in live_sc_timestamps
+        )
         live_prod_kwh = sum(kwh for _, kwh in live_prod_deltas)
         live_exp_kwh = sum(kwh for _, kwh in live_exp_deltas)
 
@@ -386,7 +407,9 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             live_imp_kwh = sum(kwh for _, kwh in live_imp_deltas)
             # Keep the SC-period alignment consistent with the hourly calculation:
             # only count live import for buckets where live SC is also present.
-            live_imp_in_sc = sum(kwh for ts, kwh in live_imp_deltas if ts in live_sc_timestamps)
+            live_imp_in_sc = sum(
+                kwh for ts, kwh in live_imp_deltas if ts in live_sc_timestamps
+            )
 
         # ── Combined kWh (stats + live) ───────────────────────────────────────
         sc_total_live = sc_total + live_sc_kwh
@@ -513,8 +536,12 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 bat_charge_kwh,
             )
 
-        price_desc = self._price_description(price_mode, price_entity, price_fallback, cfg)
-        tariff_desc = self._price_description(tariff_mode, tariff_entity, tariff_fallback, cfg, is_tariff=True)
+        price_desc = self._price_description(
+            price_mode, price_entity, price_fallback, cfg
+        )
+        tariff_desc = self._price_description(
+            tariff_mode, tariff_entity, tariff_fallback, cfg, is_tariff=True
+        )
         _LOGGER.debug("PV Economics | Monetary")
         _LOGGER.debug("  Price:      %s", price_desc)
         _LOGGER.debug("  Tariff:     %s", tariff_desc)
@@ -545,7 +572,9 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         _LOGGER.debug(
             "  This week   %.2f EUR  month %.2f EUR  year %.2f EUR",
-            period_yields["this_week"], period_yields["this_month"], period_yields["this_year"],
+            period_yields["this_week"],
+            period_yields["this_month"],
+            period_yields["this_year"],
         )
 
         async_handle_fallback_repairs(
@@ -605,7 +634,9 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _STATS_LAST_DATE_KEY: stats_last,
             _STATS_HOURS_KEY: len(sc_hourly),
             _DATA_DAYS_KEY: len(daily_yields),
-            _AMORT_TIME_LEFT_KEY: format_time_until(amort_date, today) if amort_date else None,
+            _AMORT_TIME_LEFT_KEY: (
+                format_time_until(amort_date, today) if amort_date else None
+            ),
             _MONTHLY_YIELDS_KEY: monthly_yields,
         }
 
@@ -647,7 +678,7 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         tariff_mode: str,
         tariff_entity: str | None,
     ) -> float:
-        """Return feed-in revenue for the live (current-hour) period using the current tariff."""
+        """Return feed-in revenue for the live period using the current tariff."""
         if not exp_deltas:
             return 0.0
         total_exp_kwh = sum(kwh for _, kwh in exp_deltas)
@@ -677,7 +708,9 @@ class PVEconomicsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     ) -> str:
         """Return a human-readable description of the configured price/tariff."""
         if mode != TARIFF_MODE_ENTITY:
-            value_key = CONF_FEED_IN_TARIFF_VALUE if is_tariff else CONF_ELECTRICITY_PRICE_VALUE
+            value_key = (
+                CONF_FEED_IN_TARIFF_VALUE if is_tariff else CONF_ELECTRICITY_PRICE_VALUE
+            )
             return f"fixed {cfg.get(value_key, '?')} ct/kWh"
         if not entity:
             return "entity (not configured)"

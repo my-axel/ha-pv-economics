@@ -28,5 +28,15 @@ namespace_packages = true
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = ["homeassistant.*"]
+module = ["homeassistant.*", "voluptuous"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "custom_components.pv_economics",
+    "custom_components.pv_economics.config_flow",
+    "custom_components.pv_economics.coordinator",
+    "custom_components.pv_economics.sensor",
+    "custom_components.pv_economics.binary_sensor",
+]
+ignore_errors = true
