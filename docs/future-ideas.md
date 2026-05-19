@@ -62,9 +62,6 @@ Today the integration blocks a second config entry. For users with two installat
 **Two-rate tariff (peak / off-peak) in fixed mode**
 Day/night rates or simple EV charging tariffs. Targeted at users with a classic two-rate electricity meter who don't need (or want) dynamic entity-based pricing. Users with real-time pricing already use entity mode.
 
-**CO₂ savings sensor (opt-in)**
-`self_consumption_kWh × gCO₂_per_kWh`, with a configurable default factor (e.g. DE grid mix ~380 g/kWh). Small to implement; the effort is keeping it genuinely opt-in so it doesn't blur the economics focus.
-
 **Multiple investment tranches with dates**
 Battery added later, module expansion — today only a single total investment amount is supported. A list of `(amount, date)` tranches would make amortization tracking more honest for upgraded systems. Touches `calculate_amortization_date` and needs documentation.
 
